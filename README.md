@@ -1,6 +1,7 @@
 # 楓之谷收益管理
 
 基於 Serverless 架構開發的網頁應用程式，專為《新楓之谷》玩家設計的 Boss 討伐與收益追蹤儀表板。系統提供角色管理、自動化收益計算、分帳狀態追蹤，以及報表匯出功能。
+參考網址：https://progress01.github.io/ms-boss-dashboard/
 
 ## 🔹 核心功能
 
