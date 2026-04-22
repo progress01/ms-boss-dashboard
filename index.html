@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>楓之谷收益管理系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    
     <style>
         body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; }
         .sidebar { min-height: 100vh; background-color: #1a252f; color: white; display: flex; flex-direction: column; }
@@ -92,6 +94,7 @@
                             <div class="mb-3">
                                 <label class="form-label">討伐目標</label>
                                 <select class="form-select" id="input-boss">
+                                    <option value="" disabled selected>請輸入或選擇目標...</option>
                                     <optgroup label="Extreme / Ultimate (終極/極限)">
                                         <option value="終極黑魔法師">終極黑魔法師 (30億)</option>
                                         <option value="終極瑪麗西亞">終極瑪麗西亞 (15億)</option>
@@ -240,6 +243,8 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -258,7 +263,6 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   let currentUserUid = null; 
@@ -267,13 +271,16 @@
   const loginScreen = document.getElementById("login-screen");
   const mainApp = document.getElementById("main-app");
 
-  let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["劍豪 (本尊)"];
+  let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["角色暱稱更新"];
   let activeChar = myCharacters[0] || ""; 
   const charListContainer = document.getElementById("character-list");
   const dashboardTitle = document.getElementById("dashboard-title");
 
+  // 💡 初始化 Tom Select
+  let bossSelect;
+
   // ==========================================
-  // [模組 A] 登入與畫面切換 (徹底解決重疊問題)
+  // [模組 A] 登入與畫面切換
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -281,15 +288,22 @@
           currentUserName = user.displayName;
           document.getElementById("user-name").innerText = currentUserName;
           
-          // 💡 登入成功：隱藏登入區，顯示儀表板
           loginScreen.style.display = "none";
           mainApp.style.display = "block"; 
           
+          // 在介面顯示後，初始化 Tom Select (避免在 display:none 狀態下初始化跑版)
+          if (!bossSelect) {
+              bossSelect = new TomSelect("#input-boss", {
+                  create: false,
+                  maxOptions: null,
+                  placeholder: "請輸入或選擇目標..."
+              });
+          }
+
           renderSidebar(); 
           loadRecords(); 
       } else {
           currentUserUid = null;
-          // 💡 尚未登入：顯示登入區，隱藏儀表板
           loginScreen.style.display = "flex";
           mainApp.style.display = "none"; 
       }
@@ -385,7 +399,6 @@
       }
   });
 
-
   // ==========================================
   // [模組 D] 讀取資料 (符合安全規則)
   // ==========================================
@@ -396,7 +409,6 @@
       try {
           tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">資料同步中...</td></tr>';
 
-          // 💡 精準滿足安全規則的查詢條件
           const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
           const querySnapshot = await getDocs(q);
           
@@ -406,7 +418,6 @@
           let records = [];
           querySnapshot.forEach((doc) => { 
               let data = doc.data(); 
-              // 在前端過濾當前角色的資料
               if (data.character_name === activeChar) {
                   data.id = doc.id; 
                   records.push(data); 
@@ -479,7 +490,6 @@
 
   document.getElementById("filter-week").addEventListener("change", loadRecords);
 
-
   // ==========================================
   // [模組 E] 存檔邏輯
   // ==========================================
@@ -496,6 +506,13 @@
       if(!currentUserUid) { alert("操作失敗：請先登入系統。"); return; }
       
       const boss = document.getElementById("input-boss").value;
+      
+      // 💡 防呆檢查，確保有選王
+      if (!boss || boss === "") {
+          alert("請先選擇討伐目標！");
+          return;
+      }
+
       const teammatesStr = document.getElementById("input-teammates").value;
       const itemName = document.getElementById("input-item-name").value;
       const status = document.getElementById("input-status").value;
@@ -543,6 +560,10 @@
           
           loadRecords(); 
           document.getElementById("record-form").reset();
+          
+          // 💡 儲存後將 Tom Select 恢復為預設狀態
+          if(bossSelect) bossSelect.clear();
+          
           saveBtn.innerText = "儲存紀錄"; saveBtn.disabled = false;
       } catch (error) { console.error(error); alert("儲存失敗，請檢查網路連線或權限設定。"); saveBtn.innerText = "儲存紀錄"; saveBtn.disabled = false; }
   });
