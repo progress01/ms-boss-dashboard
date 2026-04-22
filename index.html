@@ -432,15 +432,26 @@
 
   function updateCountdowns() {
       const now = new Date();
-      let daysToNextThu = (4 - now.getDay() + 7) % 7; if (daysToNextThu === 0 && now.getHours() > 0) daysToNextThu = 7; 
-      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); nextThu.setHours(0, 0, 0, 0);
       
-      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1); nextMonth.setHours(0, 0, 0, 0);
+      // 週王 (週四 00:00 重置)
+      let daysToNextThu = (4 - now.getDay() + 7) % 7; 
+      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); 
+      nextThu.setHours(0, 0, 0, 0);
+      
+      // 💡 終極修正：如果算出來的目標時間已經是「過去式」(例如現在是週四 00:01)，那就直接往後推 7 天
+      if (now.getTime() >= nextThu.getTime()) {
+          nextThu.setDate(nextThu.getDate() + 7);
+      }
+      
+      // 黑魔 (每月1號 00:00 重置)
+      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1); 
+      nextMonth.setHours(0, 0, 0, 0);
 
       const formatDiff = (target) => {
           const diff = target - now;
           return `${Math.floor(diff / 86400000)}天 ${Math.floor((diff / 3600000) % 24)}時 ${Math.floor((diff / 60000) % 60)}分`;
       };
+      
       document.getElementById("reset-timer-week").innerText = formatDiff(nextThu);
       document.getElementById("reset-timer-month").innerText = formatDiff(nextMonth);
   }
