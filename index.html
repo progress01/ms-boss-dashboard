@@ -20,7 +20,6 @@
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
 
-        /* 🟩 側邊欄：熱力圖與任務打勾 */
         .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px 10px; overflow-x: auto; }
         .sidebar-module::-webkit-scrollbar { height: 6px; }
         .sidebar-module::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
@@ -68,8 +67,7 @@
             
             <div class="sidebar-module mt-3">
                 <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✅ 本週保底進度</h6>
-                <div id="weekly-tasks-container">
-                    </div>
+                <div id="weekly-tasks-container"></div>
             </div>
 
             <div class="sidebar-module mt-2">
@@ -91,7 +89,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <h2 class="mb-0 fw-bold" id="dashboard-title">收益與討伐紀錄</h2>
                 <div class="d-flex flex-wrap gap-2">
-                    <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
+                    <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
                         📊 本週角色進度：<span id="weekly-limit-count">0</span> / 12 隻
                     </span>
                     <span class="badge bg-secondary text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
@@ -143,13 +141,18 @@
                                     <input type="date" class="form-control" id="input-date">
                                 </div>
                                 <div class="col-12 col-md-7">
-                                    <label class="form-label">討伐目標</label>
-                                    <select id="input-boss" placeholder="輸入或選擇..."></select>
+                                    <div class="d-flex justify-content-between align-items-end mb-1">
+                                        <label class="form-label mb-0">討伐目標 <small class="text-muted">(可多選)</small></label>
+                                    </div>
+                                    <select id="input-boss" multiple placeholder="選擇目標..."></select>
                                 </div>
                             </div>
                             
+                            <div class="d-flex justify-content-end mb-3">
+                                <a href="#" id="btn-save-routine" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 設為常規清單</a>
+                            </div>
+
                             <div class="d-none" id="hidden-boss-options">
-                                <option value="" disabled selected>請選擇...</option>
                                 <optgroup label="Extreme / Ultimate (終極/極限)">
                                     <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
                                     <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
@@ -183,9 +186,22 @@
                                 </optgroup>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">同行隊友 <small class="text-muted">(可用空格或逗號隔開)</small></label>
-                                <input type="text" class="form-control" id="input-teammates" placeholder="無則留空 (單人討伐)">
+                            <div class="row mb-3">
+                                <div class="col-12 col-md-5 mb-3 mb-md-0">
+                                    <label class="form-label text-primary fw-bold">討伐人數</label>
+                                    <select class="form-select border-primary" id="input-party-size">
+                                        <option value="1">1 人 (單吃)</option>
+                                        <option value="2">2 人平分</option>
+                                        <option value="3">3 人平分</option>
+                                        <option value="4">4 人平分</option>
+                                        <option value="5">5 人平分</option>
+                                        <option value="6">6 人平分</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-7">
+                                    <label class="form-label">隊友名稱 <small class="text-muted">(選填)</small></label>
+                                    <input type="text" class="form-control" id="input-teammates" placeholder="可用空格或逗號隔開">
+                                </div>
                             </div>
 
                             <div class="row mb-3">
@@ -210,12 +226,13 @@
                                 <label class="form-check-label fw-bold text-primary" for="has-drop-check" style="cursor: pointer;">👑 登記掉落特殊物品 (飾品/箱子等)</label>
                             </div>
 
-                            <div id="drop-fields-container" class="d-none">
+                            <div id="drop-fields-container" class="d-none bg-light p-3 rounded border">
                                 <div class="mb-3">
+                                    <label class="form-label text-primary">選擇掉落物品</label>
                                     <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
                                 </div>
 
-                                <div class="row mb-4">
+                                <div class="row mb-2">
                                     <div class="col-12 col-md-4 mb-2 mb-md-0">
                                         <label class="form-label">物品狀態</label>
                                         <select class="form-select" id="input-status">
@@ -236,8 +253,9 @@
                                     </div>
                                 </div>
                             </div>
+
                             <div class="d-flex gap-2 mt-4">
-                                <button type="button" class="btn btn-dark w-100 py-2" id="btn-save">💾 儲存紀錄</button>
+                                <button type="button" class="btn btn-dark w-100 py-2 fs-5" id="btn-save">💾 儲存紀錄</button>
                                 <button type="button" class="btn btn-outline-secondary py-2 d-none" id="btn-cancel-edit">取消</button>
                             </div>
                         </form>
@@ -282,24 +300,21 @@
     </div>
 </div>
 
-<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold" id="settingsModalLabel">⚙️ 系統與物品設定</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title fw-bold">⚙️ 系統與物品設定</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <h6 class="fw-bold mb-3">📦 管理自訂追蹤物品</h6>
-        <p class="text-muted" style="font-size: 0.85rem;">在這裡新增的物品，會永久保存在您的瀏覽器中，並出現於「掉落物品」的下拉選單裡，方便您快速選取。</p>
-        
+        <p class="text-muted" style="font-size: 0.85rem;">這裡新增的物品會保存在您的瀏覽器中，方便您快速選取。</p>
         <div class="input-group mb-3">
-          <input type="text" id="input-custom-item" class="form-control" placeholder="輸入物品名稱 (如：口紅控制機)">
+          <input type="text" id="input-custom-item" class="form-control" placeholder="輸入物品名稱">
           <button class="btn btn-primary" id="btn-add-custom-item">加入清單</button>
         </div>
-        
-        <ul class="list-group" id="custom-item-list">
-          </ul>
+        <ul class="list-group" id="custom-item-list"></ul>
       </div>
     </div>
   </div>
@@ -313,7 +328,6 @@
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-  // 🔴🔴🔴 請務必替換為真實的 Firebase Config 金鑰 🔴🔴🔴
   const firebaseConfig = {
     apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
     authDomain: "maplestoryboss.firebaseapp.com",
@@ -341,18 +355,17 @@
   let currentRecordsData = [];
 
   // ==========================================
-  // [模組 A] UI 切換邏輯 (掉寶開關)
+  // [UI 互動] 掉寶開關
   // ==========================================
   const dropCheck = document.getElementById("has-drop-check");
   const dropContainer = document.getElementById("drop-fields-container");
-
   dropCheck.addEventListener("change", (e) => {
       if(e.target.checked) dropContainer.classList.remove("d-none");
       else dropContainer.classList.add("d-none");
   });
   
   // ==========================================
-  // [模組 0] 自訂掉寶管理系統
+  // [模組 0] 自訂掉寶管理
   // ==========================================
   const defaultItemOptions = [
       { group: "漆黑的 Boss 飾品", value: "口紅控制機", text: "口紅控制機" },
@@ -420,7 +433,26 @@
   }
 
   // ==========================================
-  // [模組 B] 登入與介面切換 
+  // [常規預設王表機制]
+  // ==========================================
+  function loadRoutineBosses() {
+      if(!bossSelect) return;
+      let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
+      let defaults = routineMap[activeChar] || [];
+      bossSelect.setValue(defaults);
+  }
+
+  document.getElementById("btn-save-routine").addEventListener("click", (e) => {
+      e.preventDefault();
+      let selected = bossSelect.getValue(); 
+      let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
+      routineMap[activeChar] = selected;
+      localStorage.setItem("ms_routine_bosses", JSON.stringify(routineMap));
+      alert(`⭐ 已將這 ${selected.length} 隻王設為【${activeChar}】的每週常規清單！\n下次切換角色時會自動載入。`);
+  });
+
+  // ==========================================
+  // [模組 A] 登入與介面切換 
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -429,12 +461,16 @@
           loginScreen.style.display = "none"; mainApp.style.display = "block"; 
           
           if (!bossSelect) {
-              // 把隱藏的 option 塞給 TomSelect
               document.getElementById("input-boss").innerHTML = document.getElementById("hidden-boss-options").innerHTML;
-              bossSelect = new TomSelect("#input-boss", { create: false, placeholder: "輸入簡稱或選擇目標..." });
+              bossSelect = new TomSelect("#input-boss", { 
+                  create: false, 
+                  maxItems: null, 
+                  plugins: ['remove_button'],
+                  placeholder: "輸入簡稱或點擊選擇目標..." 
+              });
           }
           initItemSelect(); renderCustomItemList(); 
-          document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; // 初始化日期為今天
+          document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; 
 
           renderSidebar(); loadRecords(); 
       } else {
@@ -471,7 +507,6 @@
   }
   setInterval(updateCountdowns, 60000); updateCountdowns();
 
-  // 渲染左側週常保底清單
   const weeklyTaskNames = ["地下水道", "公會城 / 跑旗", "每週任務 (解圖/跳舞)", "武陵道場"];
   function renderWeeklyTasks() {
       const container = document.getElementById("weekly-tasks-container"); container.innerHTML = "";
@@ -480,7 +515,6 @@
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
       let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
       
-      // 若存檔的週次不是本週，則全數重置為 false
       if (savedData.weekStart !== thisWeekStart) {
           savedData = { weekStart: thisWeekStart, tasks: {} };
           localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData));
@@ -496,7 +530,6 @@
           container.appendChild(div);
       });
 
-      // 綁定點擊事件，自動儲存
       document.querySelectorAll(".task-checkbox").forEach(chk => {
           chk.addEventListener("change", (e) => {
               savedData.tasks[e.target.dataset.idx] = e.target.checked;
@@ -522,8 +555,11 @@
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
-      renderWeeklyTasks(); // 呼叫更新保底清單
+      
+      renderWeeklyTasks();
+      loadRoutineBosses(); 
   }
+  
   document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("請輸入新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
 
   // ==========================================
@@ -568,7 +604,7 @@
           
           currentRecordsData = records; 
           document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
-          document.getElementById("weekly-limit-count").parentElement.className = charWeeklyCount >= 12 
+          document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 
               ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" 
               : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
           renderHeatmap(records);
@@ -632,7 +668,7 @@
   document.getElementById("filter-week").addEventListener("change", loadRecords);
 
   // ==========================================
-  // [模組 E] 存檔與編輯更新 (加入自訂日期與掉寶開關)
+  // [模組 E] 存檔與編輯更新 
   // ==========================================
   const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
   const saveBtn = document.getElementById("btn-save"); const cancelEditBtn = document.getElementById("btn-cancel-edit");
@@ -643,65 +679,88 @@
       const recordDate = document.getElementById("input-date").value;
       if (!recordDate) { alert("請選擇討伐日期！"); return; }
       
-      const boss = document.getElementById("input-boss").value; if (!boss || boss === "") { alert("請選擇討伐目標！"); return; }
+      const selectedBosses = bossSelect.getValue(); 
+      if (!selectedBosses || selectedBosses.length === 0) { alert("請至少選擇一隻討伐目標！"); return; }
 
+      const editId = document.getElementById("edit-doc-id").value;
+      
+      if ((dropCheck.checked || editId) && selectedBosses.length > 1) {
+          alert("【系統提示】\n登記特殊掉寶 或 編輯紀錄時，一次只能選擇一隻王喔！");
+          return;
+      }
+
+      // 💡 取得選擇的「討伐人數」，不再依賴陣列長度
+      const partySize = parseInt(document.getElementById("input-party-size").value) || 1;
       const teammatesStr = document.getElementById("input-teammates").value;
       let teamArray = teammatesStr.split(/[\s,，、]+/).filter(name => name.trim() !== "");
-      const totalPlayers = teamArray.length + 1; 
-
-      const basePrice = bossCrystalPrices[boss] || 0;
-      const myCrystalIncome = (basePrice / totalPlayers).toFixed(2); 
       
-      // 💡 判斷是否有勾選「登記掉寶」
       let itemName = "無", itemTotalPrice = 0, myDividend = 0, status = "僅紀錄", payoutStatus = "無需分帳";
       
       if (dropCheck.checked) {
           itemName = document.getElementById("input-item-name").value || "無";
           itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
-          myDividend = itemTotalPrice > 0 ? (itemTotalPrice / totalPlayers).toFixed(2) : 0;
+          myDividend = itemTotalPrice > 0 ? (itemTotalPrice / partySize).toFixed(2) : 0;
           status = document.getElementById("input-status").value;
           payoutStatus = document.getElementById("input-payout-status").value;
 
-          // 學習新掉寶
           if (itemName !== "無" && !defaultItemOptions.some(d => d.value === itemName)) {
               let items = getCustomItems();
               if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
           }
       }
 
-      const recordData = {
-          uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
-          date: recordDate, // 💡 採用使用者自訂的日期
-          boss_name: boss, teammates: teamArray, total_players: totalPlayers,
-          crystal_income_billion: parseFloat(myCrystalIncome),
-          clear_time: document.getElementById("input-clear-time").value.trim(), lives_left: document.getElementById("input-lives").value.trim(), memo: document.getElementById("input-memo").value.trim(), 
-          item_total_price_billion: itemTotalPrice, my_dividend_billion: parseFloat(myDividend),
-          item_name: itemName, status: status, payout_status: payoutStatus
-      };
-
-      const editId = document.getElementById("edit-doc-id").value;
       try {
           saveBtn.innerText = "處理中..."; saveBtn.disabled = true;
-          if (editId) { await updateDoc(doc(db, "DropRecords", editId), recordData); alert("紀錄已更新！"); } 
-          else { await addDoc(collection(db, "DropRecords"), recordData); alert(`新增成功\n結算：${myCrystalIncome} 億`); }
+
+          let promises = [];
+          for (let boss of selectedBosses) {
+              const basePrice = bossCrystalPrices[boss] || 0;
+              const myCrystalIncome = (basePrice / partySize).toFixed(2); 
+
+              const recordData = {
+                  uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+                  date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, // 💡 寫入指定的除法人數
+                  crystal_income_billion: parseFloat(myCrystalIncome),
+                  clear_time: document.getElementById("input-clear-time").value.trim(), lives_left: document.getElementById("input-lives").value.trim(), memo: document.getElementById("input-memo").value.trim(), 
+                  item_total_price_billion: itemTotalPrice, my_dividend_billion: parseFloat(myDividend),
+                  item_name: itemName, status: status, payout_status: payoutStatus
+              };
+
+              if (editId) {
+                  promises.push(updateDoc(doc(db, "DropRecords", editId), recordData));
+              } else {
+                  promises.push(addDoc(collection(db, "DropRecords"), recordData));
+              }
+          }
+
+          await Promise.all(promises);
+
+          if (editId) {
+              alert("紀錄已更新！");
+          } else {
+              alert(`✅ 成功寫入 ${selectedBosses.length} 筆討伐紀錄！`);
+          }
+          
           resetFormState(); loadRecords(); 
-      } catch (error) { console.error(error); alert("儲存失敗"); resetFormState(); }
+      } catch (error) { console.error(error); alert("儲存失敗，請檢查網路連線。"); resetFormState(); }
   });
 
   cancelEditBtn.addEventListener("click", resetFormState);
   function resetFormState() {
       document.getElementById("record-form").reset(); document.getElementById("edit-doc-id").value = "";
-      document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; // 日期重置為今天
+      document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; 
+      document.getElementById("input-party-size").value = "1"; // 恢復單吃預設
       
-      // 關閉並隱藏掉寶區塊
       dropCheck.checked = false; dropContainer.classList.add("d-none");
       
-      if(bossSelect) bossSelect.clear(); if(itemSelect) itemSelect.clear();
+      loadRoutineBosses(); 
+      
+      if(itemSelect) itemSelect.clear();
       document.getElementById("form-title").innerText = "新增討伐紀錄"; saveBtn.innerText = "💾 儲存紀錄"; saveBtn.classList.replace("btn-primary", "btn-dark"); cancelEditBtn.classList.add("d-none"); saveBtn.disabled = false;
   }
 
   // ==========================================
-  // [模組 F] 表格操作邏輯 (進入編輯載入舊資料)
+  // [模組 F] 表格操作邏輯
   // ==========================================
   document.getElementById("table-body").addEventListener("click", async (e) => {
       const btnDelete = e.target.closest(".btn-delete-record");
@@ -712,12 +771,15 @@
           const docId = btnEdit.getAttribute("data-id"); const targetData = currentRecordsData.find(d => d.id === docId);
           if (targetData) {
               document.getElementById("edit-doc-id").value = docId;
-              document.getElementById("input-date").value = targetData.date; // 💡 載入當時紀錄的日期
-              if(bossSelect) bossSelect.setValue(targetData.boss_name);
+              document.getElementById("input-date").value = targetData.date; 
+              if(bossSelect) bossSelect.setValue([targetData.boss_name]); 
+              
+              // 💡 載入當時設定的人數
+              document.getElementById("input-party-size").value = targetData.total_players || 1;
               document.getElementById("input-teammates").value = targetData.teammates.join(" "); 
+              
               document.getElementById("input-clear-time").value = targetData.clear_time || ""; document.getElementById("input-lives").value = targetData.lives_left || ""; document.getElementById("input-memo").value = targetData.memo || "";
               
-              // 💡 如果這筆紀錄當時有掉寶，自動打開開關並載入資料
               if(targetData.item_name && targetData.item_name !== "無") { 
                   dropCheck.checked = true; dropContainer.classList.remove("d-none");
                   if(itemSelect) { itemSelect.addOption({value: targetData.item_name, text: targetData.item_name}); itemSelect.setValue(targetData.item_name); }
