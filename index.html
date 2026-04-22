@@ -10,7 +10,7 @@
     <style>
         body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; }
         .sidebar { min-height: 100vh; background-color: #1a252f; color: white; display: flex; flex-direction: column; }
-        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid #2c3e50; transition: 0.2s; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid #2c3e50; transition: 0.2s; cursor: pointer;}
         .sidebar a:hover, .sidebar a.active { background-color: #2c3e50; color: #3498db; border-left: 4px solid #3498db; }
         .card-custom { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .status-pending { background-color: #ffeeba; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 0.85em; }
@@ -19,7 +19,18 @@
         .dividend-text { color: #27ae60; font-weight: bold; }
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
-        .info-badge { font-size: 0.85rem; padding: 6px 10px; border-radius: 8px; background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; margin-bottom: 8px; display: inline-block;}
+
+        /* 🟩 熱力圖 (Heatmap) 專屬樣式 */
+        .heatmap-container { overflow-x: auto; padding-bottom: 10px; }
+        .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); gap: 4px; grid-auto-flow: column; width: max-content; }
+        .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background-color: #ebedf0; transition: 0.2s;}
+        .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        .hc-0 { background-color: #ebedf0; }
+        .hc-1 { background-color: #9be9a8; }
+        .hc-2 { background-color: #40c463; }
+        .hc-3 { background-color: #30a14e; }
+        .hc-4 { background-color: #216e39; }
+        .heatmap-legend { display: flex; align-items: center; justify-content: flex-end; font-size: 0.8rem; color: #6c757d; gap: 4px; margin-top: 5px; }
 
         @media (max-width: 768px) {
             .sidebar { min-height: auto; position: sticky; top: 0; z-index: 1000; padding-top: 10px !important; padding-bottom: 0 !important; }
@@ -28,7 +39,8 @@
             #character-list::-webkit-scrollbar { display: none; }
             .char-item { flex-shrink: 0; min-width: 140px; border-left: none !important; border-bottom: 4px solid transparent; padding: 10px 15px; }
             .char-item.active { border-bottom: 4px solid #3498db !important; background-color: #2c3e50; }
-            #btn-add-char, #btn-logout { text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px; margin-top: 0 !important; }
+            .sidebar-bottom-actions { display: flex; }
+            .sidebar-bottom-actions a { flex: 1; text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px;}
             .stat-card-wrapper { margin-bottom: 15px; }
         }
     </style>
@@ -48,17 +60,37 @@
         <div class="col-md-2 sidebar p-0 pt-3">
             <h5 class="text-center mb-3 text-white">收益管理系統</h5>
             <div id="character-list"></div>
-            <a href="#" id="btn-add-char" class="text-warning mt-3">➕ 新增角色</a>
-            <a href="#" id="btn-logout" class="text-danger mt-auto mb-3">🚪 登出 (<span id="user-name"></span>)</a>
+            
+            <div class="sidebar-bottom-actions mt-auto d-flex flex-column">
+                <a id="btn-add-char" class="text-warning">➕ 新增角色</a>
+                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="text-info">⚙️ 系統與物品設定</a>
+                <a id="btn-logout" class="text-danger mb-3">🚪 登出 (<span id="user-name"></span>)</a>
+            </div>
         </div>
 
         <div class="col-md-10 p-4">
-            <div class="d-flex justify-content-between align-items-start mb-3 flex-column flex-md-row">
-                <h2 class="mb-2 mb-md-0" id="dashboard-title">收益與討伐紀錄</h2>
-                <div class="text-md-end">
-                    <div class="info-badge fw-bold border-primary text-primary">📊 本週帳號結晶進度：<span id="weekly-limit-count">0</span> / 12 隻</div><br>
-                    <div class="info-badge">🔄 週王重置：<span id="reset-timer-week">計算中...</span></div>
-                    <div class="info-badge">🌑 黑魔重置：<span id="reset-timer-month">計算中...</span></div>
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <h2 class="mb-0 fw-bold" id="dashboard-title">收益與討伐紀錄</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
+                        📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
+                    </span>
+                    <span class="badge bg-secondary text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
+                        🔄 週王重置：<span id="reset-timer-week">計算中...</span>
+                    </span>
+                    <span class="badge bg-dark text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
+                        🌑 黑魔重置：<span id="reset-timer-month">計算中...</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="card card-custom p-3 mb-4 bg-white">
+                <h6 class="text-muted fw-bold mb-3">🔥 討伐活躍度 (近 16 週)</h6>
+                <div class="heatmap-container">
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                </div>
+                <div class="heatmap-legend">
+                    少 <div class="heatmap-cell hc-0"></div><div class="heatmap-cell hc-1"></div><div class="heatmap-cell hc-2"></div><div class="heatmap-cell hc-3"></div><div class="heatmap-cell hc-4"></div> 多
                 </div>
             </div>
 
@@ -130,7 +162,7 @@
                                         <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
                                         <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.5億)</option>
                                         <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.5億)</option>
-                                        </optgroup>
+                                    </optgroup>
                                 </select>
                             </div>
                             
@@ -158,31 +190,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label">掉落物品 <small class="text-muted">(支援直接輸入新建)</small></label>
-                                <select id="input-item-name" placeholder="選擇或輸入物品...">
-                                    <option value="">無 (僅紀錄結晶)</option>
-                                    <optgroup label="漆黑的 Boss 飾品">
-                                        <option value="口紅控制機">口紅控制機</option>
-                                        <option value="附有魔力的眼罩">附有魔力的眼罩</option>
-                                        <option value="巨大恐怖">巨大恐怖</option>
-                                        <option value="苦痛的根源">苦痛的根源</option>
-                                        <option value="創世徽章">創世徽章</option>
-                                        <option value="破滅的標記">破滅的標記</option>
-                                        <option value="夢幻的皮帶">夢幻的皮帶</option>
-                                        <option value="指揮官力量耳環">指揮官力量耳環</option>
-                                        <option value="黑之心">黑之心</option>
-                                    </optgroup>
-                                    <optgroup label="黎明的 Boss 飾品">
-                                        <option value="黎明守護天使戒指">黎明守護天使戒指</option>
-                                        <option value="破曉墜飾">破曉墜飾</option>
-                                        <option value="暮光印記">暮光印記</option>
-                                        <option value="日晝耳環">日晝耳環</option>
-                                    </optgroup>
-                                    <optgroup label="特殊箱子 / 其他">
-                                        <option value="戒指箱子 (Lv.4)">戒指箱子 (Lv.4)</option>
-                                        <option value="戒指箱子 (Lv.3)">戒指箱子 (Lv.3)</option>
-                                        <option value="靈魂寶珠">靈魂寶珠</option>
-                                    </optgroup>
-                                </select>
+                                <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
                             </div>
 
                             <div class="row mb-4">
@@ -243,9 +251,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="table-body">
-                                    <tr>
-                                        <td colspan="4" class="text-muted">目前尚無紀錄</td>
-                                    </tr>
+                                    <tr><td colspan="4" class="text-muted">目前尚無紀錄</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -256,6 +262,30 @@
     </div>
 </div>
 
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="settingsModalLabel">⚙️ 系統與物品設定</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6 class="fw-bold mb-3">📦 管理自訂追蹤物品</h6>
+        <p class="text-muted" style="font-size: 0.85rem;">在這裡新增的物品，會永久保存在您的瀏覽器中，並出現於「掉落物品」的下拉選單裡，方便您快速選取。</p>
+        
+        <div class="input-group mb-3">
+          <input type="text" id="input-custom-item" class="form-control" placeholder="輸入物品名稱 (如：口紅控制機)">
+          <button class="btn btn-primary" id="btn-add-custom-item">加入清單</button>
+        </div>
+        
+        <ul class="list-group" id="custom-item-list">
+          </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
 <script type="module">
@@ -281,38 +311,106 @@
   
   let currentUserUid = null; 
   let currentUserName = "";
-  let bossSelect, itemSelect; // TomSelect 實例
+  let bossSelect, itemSelect; 
 
   const loginScreen = document.getElementById("login-screen");
   const mainApp = document.getElementById("main-app");
 
-  let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["輸入角色暱稱"];
+  let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["請輸入角色暱稱"];
   let activeChar = myCharacters[0] || ""; 
+  let currentRecordsData = [];
   
+  // ==========================================
+  // [模組 0] 自訂掉寶管理系統 (讀寫 localStorage)
+  // ==========================================
+  const defaultItemOptions = [
+      { group: "漆黑的 Boss 飾品", value: "口紅控制機", text: "口紅控制機" },
+      { group: "漆黑的 Boss 飾品", value: "附有魔力的眼罩", text: "附有魔力的眼罩" },
+      { group: "漆黑的 Boss 飾品", value: "巨大恐怖", text: "巨大恐怖" },
+      { group: "漆黑的 Boss 飾品", value: "苦痛的根源", text: "苦痛的根源" },
+      { group: "漆黑的 Boss 飾品", value: "創世徽章", text: "創世徽章" },
+      { group: "漆黑的 Boss 飾品", value: "破滅的標記", text: "破滅的標記" },
+      { group: "漆黑的 Boss 飾品", value: "夢幻的皮帶", text: "夢幻的皮帶" },
+      { group: "漆黑的 Boss 飾品", value: "指揮官力量耳環", text: "指揮官力量耳環" },
+      { group: "漆黑的 Boss 飾品", value: "黑之心", text: "黑之心" },
+      { group: "黎明的 Boss 飾品", value: "黎明守護天使戒指", text: "黎明守護天使戒指" },
+      { group: "黎明的 Boss 飾品", value: "破曉墜飾", text: "破曉墜飾" },
+      { group: "黎明的 Boss 飾品", value: "暮光印記", text: "暮光印記" },
+      { group: "黎明的 Boss 飾品", value: "星耀耳環", text: "星耀耳環" },
+      { group: "特殊箱子 / 其他", value: "戒指箱子 (Lv.4)", text: "戒指箱子 (Lv.4)" },
+      { group: "特殊箱子 / 其他", value: "戒指箱子 (Lv.3)", text: "戒指箱子 (Lv.3)" },
+      { group: "特殊箱子 / 其他", value: "靈魂寶珠", text: "靈魂寶珠" }
+      { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }
+      { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
+  ];
+
+  function getCustomItems() { return JSON.parse(localStorage.getItem("ms_custom_items")) || []; }
+  
+  function renderCustomItemList() {
+      const list = document.getElementById("custom-item-list");
+      list.innerHTML = "";
+      const items = getCustomItems();
+      if(items.length === 0) { list.innerHTML = `<li class="list-group-item text-muted text-center">目前無自訂物品</li>`; return; }
+      
+      items.forEach((item, index) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item d-flex justify-content-between align-items-center";
+          li.innerHTML = `<span>${item}</span><button class="btn btn-sm btn-outline-danger" onclick="window.deleteCustomItem(${index})">刪除</button>`;
+          list.appendChild(li);
+      });
+  }
+
+  document.getElementById("btn-add-custom-item").addEventListener("click", () => {
+      const input = document.getElementById("input-custom-item");
+      const val = input.value.trim();
+      if(val) {
+          let items = getCustomItems();
+          if(!items.includes(val)) { items.push(val); localStorage.setItem("ms_custom_items", JSON.stringify(items)); }
+          input.value = "";
+          renderCustomItemList(); initItemSelect(); 
+      }
+  });
+
+  window.deleteCustomItem = function(index) {
+      let items = getCustomItems(); items.splice(index, 1);
+      localStorage.setItem("ms_custom_items", JSON.stringify(items));
+      renderCustomItemList(); initItemSelect();
+  }
+
+  function initItemSelect() {
+      if (itemSelect) { itemSelect.destroy(); } 
+      const customItems = getCustomItems().map(name => ({ group: "📌 我的自訂物品", value: name, text: name }));
+      const allOptions = [{group:"系統預設", value:"", text:"無 (僅紀錄結晶)"}, ...customItems, ...defaultItemOptions];
+      
+      itemSelect = new TomSelect("#input-item-name", {
+          options: allOptions,
+          optgroups: [
+              { value: "📌 我的自訂物品", label: "📌 我的自訂物品" },
+              { value: "漆黑的 Boss 飾品", label: "漆黑的 Boss 飾品" },
+              { value: "黎明的 Boss 飾品", label: "黎明的 Boss 飾品" },
+              { value: "特殊箱子 / 其他", label: "特殊箱子 / 其他" }
+          ],
+          optgroupField: 'group', labelField: 'text', valueField: 'value', searchField: ['text'],
+          create: true, placeholder: "選擇或輸入物品..."
+      });
+  }
+
   // ==========================================
   // [模組 A] 登入與介面切換
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
-          currentUserUid = user.uid; 
-          currentUserName = user.displayName;
+          currentUserUid = user.uid; currentUserName = user.displayName;
           document.getElementById("user-name").innerText = currentUserName;
+          loginScreen.style.display = "none"; mainApp.style.display = "block"; 
           
-          loginScreen.style.display = "none";
-          mainApp.style.display = "block"; 
-          
-          if (!bossSelect) {
-              bossSelect = new TomSelect("#input-boss", { create: false, placeholder: "輸入簡稱或選擇目標..." });
-              // 掉落物選單：允許使用者自創物品
-              itemSelect = new TomSelect("#input-item-name", { create: true, placeholder: "選擇或輸入物品..." });
-          }
+          if (!bossSelect) bossSelect = new TomSelect("#input-boss", { create: false, placeholder: "輸入簡稱或選擇目標..." });
+          initItemSelect(); 
+          renderCustomItemList(); 
 
-          renderSidebar(); 
-          loadRecords(); 
+          renderSidebar(); loadRecords(); 
       } else {
-          currentUserUid = null;
-          loginScreen.style.display = "flex";
-          mainApp.style.display = "none"; 
+          currentUserUid = null; loginScreen.style.display = "flex"; mainApp.style.display = "none"; 
       }
   });
 
@@ -320,90 +418,94 @@
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定要登出系統嗎？")) signOut(auth); });
 
   // ==========================================
-  // [模組 B] 重置時間倒數 (週王 & 黑魔法師)
+  // [模組 B] 重置時間計算
   // ==========================================
   function getWeekBoundaries() {
-      const now = new Date();
-      const currentDay = now.getDay(); 
+      const now = new Date(); const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
       const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu);
       thisWeekStart.setHours(0, 0, 0, 0);
-      const lastWeekStart = new Date(thisWeekStart);
-      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
       return { thisWeekStart, lastWeekStart };
   }
 
   function updateCountdowns() {
       const now = new Date();
+      let daysToNextThu = (4 - now.getDay() + 7) % 7; if (daysToNextThu === 0 && now.getHours() > 0) daysToNextThu = 7; 
+      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); nextThu.setHours(0, 0, 0, 0);
       
-      // 週王 (週四 00:00)
-      let daysToNextThu = (4 - now.getDay() + 7) % 7;
-      if (daysToNextThu === 0 && now.getHours() > 0) daysToNextThu = 7; 
-      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu);
-      nextThu.setHours(0, 0, 0, 0);
-      
-      // 黑魔 (每月1號 00:00)
-      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      nextMonth.setHours(0, 0, 0, 0);
+      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1); nextMonth.setHours(0, 0, 0, 0);
 
       const formatDiff = (target) => {
           const diff = target - now;
-          const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-          const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-          const m = Math.floor((diff / 1000 / 60) % 60);
-          return `${d}天 ${h}小時 ${m}分`;
+          return `${Math.floor(diff / 86400000)}天 ${Math.floor((diff / 3600000) % 24)}時 ${Math.floor((diff / 60000) % 60)}分`;
       };
-
       document.getElementById("reset-timer-week").innerText = formatDiff(nextThu);
       document.getElementById("reset-timer-month").innerText = formatDiff(nextMonth);
   }
-  setInterval(updateCountdowns, 60000);
-  updateCountdowns();
+  setInterval(updateCountdowns, 60000); updateCountdowns();
 
   function renderSidebar() {
-      const charListContainer = document.getElementById("character-list");
-      charListContainer.innerHTML = ""; 
+      const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
       document.getElementById("dashboard-title").innerText = myCharacters.length === 0 ? `請先新增角色` : `${activeChar} - 收益與討伐紀錄`; 
-      
       myCharacters.forEach((charName, index) => {
-          const a = document.createElement("a");
-          a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
+          const a = document.createElement("a"); a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
           if (charName === activeChar) a.classList.add("active");
-
-          const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.cursor = "pointer"; textSpan.style.flexGrow = "1"; 
+          const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           textSpan.addEventListener("click", (e) => { e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords(); });
-
-          const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.cursor = "pointer"; editBtn.style.fontSize = "0.9em"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
+          const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
           editBtn.addEventListener("click", (e) => {
-              e.preventDefault(); e.stopPropagation(); 
-              const action = prompt(`修改角色名稱：\n(清空可刪除角色)`, charName);
+              e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除角色)`, charName);
               if (action === null) return; 
-              if (action.trim() === "") {
-                  if (confirm(`確定刪除【${charName}】？`)) {
-                      myCharacters.splice(index, 1); activeChar = myCharacters.length > 0 ? myCharacters[0] : "";
-                      localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); 
-                  }
-              } else {
-                  myCharacters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); 
-                  localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); 
-              }
+              if (action.trim() === "") { if (confirm(`確定刪除【${charName}】？`)) { myCharacters.splice(index, 1); activeChar = myCharacters.length > 0 ? myCharacters[0] : ""; localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); } } 
+              else { myCharacters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); }
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
   }
-
-  document.getElementById("btn-add-char").addEventListener("click", (e) => {
-      e.preventDefault(); const newChar = prompt("請輸入新角色名稱：");
-      if (newChar && newChar.trim() !== "") {
-          myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); 
-      }
-  });
-
-  // 全域變數保存目前取得的資料 (方便編輯時抓取)
-  let currentRecordsData = [];
+  document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("請輸入新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
 
   // ==========================================
-  // [模組 D] 讀取資料與 12隻限制統計
+  // [模組 C] 🟩 繪製打王熱力圖
+  // ==========================================
+  function renderHeatmap(records) {
+      const heatmapGrid = document.getElementById("heatmap-grid");
+      heatmapGrid.innerHTML = "";
+      
+      const today = new Date(); today.setHours(0,0,0,0);
+      let startDate = new Date(today);
+      startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
+      
+      let dateCounts = {};
+      records.forEach(r => { 
+          if(r.character_name === activeChar) { 
+              dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
+          }
+      });
+
+      let currDate = new Date(startDate);
+      while(currDate <= today) {
+          let dateStr = currDate.toISOString().split('T')[0];
+          let count = dateCounts[dateStr] || 0;
+          
+          let cell = document.createElement("div");
+          cell.className = "heatmap-cell";
+          if(count === 0) cell.classList.add("hc-0");
+          else if(count <= 1) cell.classList.add("hc-1");
+          else if(count <= 2) cell.classList.add("hc-2");
+          else if(count <= 4) cell.classList.add("hc-3");
+          else cell.classList.add("hc-4");
+          
+          cell.title = `${dateStr} 討伐了 ${count} 隻王`;
+          heatmapGrid.appendChild(cell);
+          currDate.setDate(currDate.getDate() + 1);
+      }
+      
+      setTimeout(() => { document.querySelector('.heatmap-container').scrollLeft = 9999; }, 100);
+  }
+
+  // ==========================================
+  // [模組 D] 讀取資料與統計 (包含 UI 雙排按鈕優化)
   // ==========================================
   async function loadRecords() {
       if(!currentUserUid) return;
@@ -415,32 +517,26 @@
           const querySnapshot = await getDocs(q);
           
           let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0; 
-          let accountWeeklyCount = 0; // 帳號本週打王總數
-
-          let records = [];
-          const boundaries = getWeekBoundaries();
+          let accountWeeklyCount = 0; 
+          let records = []; const boundaries = getWeekBoundaries();
 
           querySnapshot.forEach((doc) => { 
-              let data = doc.data(); 
-              data.id = doc.id; 
-              
-              // 統計帳號內「本週」所有紀錄的數量 (用於 12隻限制)
-              if (new Date(data.date) >= boundaries.thisWeekStart) {
-                  accountWeeklyCount++;
-              }
-
-              // 僅篩選當前角色放入表格
-              if (data.character_name === activeChar) {
-                  records.push(data); 
-              }
+              let data = doc.data(); data.id = doc.id; 
+              if (new Date(data.date) >= boundaries.thisWeekStart) accountWeeklyCount++;
+              records.push(data); 
           });
           
-          currentRecordsData = records; // 存入全域變數
+          currentRecordsData = records; 
           document.getElementById("weekly-limit-count").innerText = accountWeeklyCount;
-          records.sort((a, b) => new Date(b.date) - new Date(a.date));
+          document.getElementById("weekly-limit-count").parentElement.className = accountWeeklyCount >= 12 
+              ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" 
+              : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
+          
+          renderHeatmap(records);
 
+          let charRecords = records.filter(d => d.character_name === activeChar).sort((a, b) => new Date(b.date) - new Date(a.date));
           const weekFilter = document.getElementById("filter-week").value;
-          let filteredRecords = records.filter(data => {
+          let filteredRecords = charRecords.filter(data => {
               const recordDate = new Date(data.date);
               if (weekFilter === "this_week") return recordDate >= boundaries.thisWeekStart;
               if (weekFilter === "last_week") return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
@@ -458,14 +554,11 @@
               if (data.status === "已售出" || data.status === "已分紅") statusBadge = `<span class="status-sold">已售出</span>`;
               if (data.status === "無") statusBadge = `<span class="text-muted">--</span>`;
 
-              let payoutBadge = "";
-              if (data.payout_status === "未結清") payoutBadge = ` <span class="badge bg-danger">未結清</span>`;
-              else if (data.payout_status === "已結清") payoutBadge = ` <span class="badge bg-success">已結清</span>`;
+              let payoutBadge = data.payout_status === "未結清" ? ` <span class="badge bg-danger">未結清</span>` : data.payout_status === "已結清" ? ` <span class="badge bg-success">已結清</span>` : "";
 
               let battleInfo = "";
               if (data.clear_time || data.lives_left) {
-                  let timeStr = data.clear_time ? `⏱️ ${data.clear_time}` : "";
-                  let lifeStr = data.lives_left ? `❤️ x${data.lives_left}` : "";
+                  let timeStr = data.clear_time ? `⏱️ ${data.clear_time}` : ""; let lifeStr = data.lives_left ? `❤️ x${data.lives_left}` : "";
                   battleInfo = `<br><span class="badge-battle">${timeStr} ${lifeStr}</span>`;
               }
               if (data.memo) battleInfo += `<span class="memo-text">備註：${data.memo}</span>`;
@@ -473,6 +566,7 @@
               let incomeHtml = `<div class="crystal-text">💎 ${data.crystal_income_billion} 億</div>`;
               if (data.my_dividend_billion > 0) incomeHtml += `<div class="dividend-text" style="font-size:0.9em;">💰 +${data.my_dividend_billion} 億</div>`;
 
+              // 💡 優化：操作按鈕在大螢幕左右並排
               html += `
                   <tr>
                       <td class="text-start ps-3">
@@ -482,212 +576,124 @@
                       <td class="text-nowrap">${incomeHtml}</td>
                       <td class="text-nowrap">${data.item_name}<br>${statusBadge}${payoutBadge}</td> 
                       <td>
-                          <button class="btn btn-sm btn-outline-primary btn-edit-record mb-1" data-id="${data.id}">編輯</button><br>
-                          <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
+                          <div class="d-flex flex-column flex-xl-row gap-1 justify-content-center">
+                              <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}">編輯</button>
+                              <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
+                          </div>
                       </td>
                   </tr>
               `;
           });
 
           tableBody.innerHTML = html === "" ? '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>' : html;
+          document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`; document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
+          document.getElementById("stat-pending").innerText = `${pendingCount} 件`; document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`; 
 
-          document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`;
-          document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
-          document.getElementById("stat-pending").innerText = `${pendingCount} 件`;
-          document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`; 
-
-      } catch (error) {
-          console.error(error); tableBody.innerHTML = '<tr><td colspan="4" class="text-danger">讀取失敗，請確認網路或登入狀態</td></tr>';
-      }
+      } catch (error) { console.error(error); tableBody.innerHTML = '<tr><td colspan="4" class="text-danger">讀取失敗，請確認網路或登入狀態</td></tr>'; }
   }
-
   document.getElementById("filter-week").addEventListener("change", loadRecords);
 
 
   // ==========================================
-  // [模組 E] 存檔與更新邏輯 (編輯模式)
+  // [模組 E] 存檔與編輯更新
   // ==========================================
-  const bossCrystalPrices = {
-      "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235,
-      "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857,
-      "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498
-  };
-
-  const saveBtn = document.getElementById("btn-save");
-  const cancelEditBtn = document.getElementById("btn-cancel-edit");
+  const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
+  const saveBtn = document.getElementById("btn-save"); const cancelEditBtn = document.getElementById("btn-cancel-edit");
 
   saveBtn.addEventListener("click", async () => {
       if(!currentUserUid) { alert("請先登入系統。"); return; }
-      
-      const boss = document.getElementById("input-boss").value;
-      if (!boss || boss === "") { alert("請選擇討伐目標！"); return; }
+      const boss = document.getElementById("input-boss").value; if (!boss || boss === "") { alert("請選擇討伐目標！"); return; }
 
       const teammatesStr = document.getElementById("input-teammates").value;
-      const itemName = document.getElementById("input-item-name").value;
-      const status = document.getElementById("input-status").value;
-      
-      const clearTime = document.getElementById("input-clear-time").value.trim();
-      const livesLeft = document.getElementById("input-lives").value.trim();
-      const memo = document.getElementById("input-memo").value.trim(); 
-      const itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
-      const payoutStatus = document.getElementById("input-payout-status").value; 
-
-      // 💡 正則表達式切分隊友字串 (支援空白與逗號)
       let teamArray = teammatesStr.split(/[\s,，、]+/).filter(name => name.trim() !== "");
       const totalPlayers = teamArray.length + 1; 
 
+      const itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
       const basePrice = bossCrystalPrices[boss] || 0;
       const myCrystalIncome = (basePrice / totalPlayers).toFixed(2); 
       const myDividend = itemTotalPrice > 0 ? (itemTotalPrice / totalPlayers).toFixed(2) : 0;
 
+      const itemName = document.getElementById("input-item-name").value;
+      if (itemName !== "" && itemName !== "無" && !defaultItemOptions.some(d => d.value === itemName)) {
+          let items = getCustomItems();
+          if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
+      }
+
       const recordData = {
-          uid: currentUserUid,
-          uid_char_key: `${currentUserUid}_${activeChar}`,
-          character_name: activeChar, 
-          boss_name: boss,
-          teammates: teamArray,
-          total_players: totalPlayers,
+          uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+          boss_name: boss, teammates: teamArray, total_players: totalPlayers,
           crystal_income_billion: parseFloat(myCrystalIncome),
-          clear_time: clearTime,
-          lives_left: livesLeft,
-          memo: memo, 
-          item_total_price_billion: itemTotalPrice,
-          my_dividend_billion: parseFloat(myDividend),
-          item_name: itemName || "無", 
-          status: status,
-          payout_status: payoutStatus
+          clear_time: document.getElementById("input-clear-time").value.trim(), lives_left: document.getElementById("input-lives").value.trim(), memo: document.getElementById("input-memo").value.trim(), 
+          item_total_price_billion: itemTotalPrice, my_dividend_billion: parseFloat(myDividend),
+          item_name: itemName || "無", status: document.getElementById("input-status").value, payout_status: document.getElementById("input-payout-status").value
       };
 
       const editId = document.getElementById("edit-doc-id").value;
-
       try {
           saveBtn.innerText = "處理中..."; saveBtn.disabled = true;
-
-          if (editId) {
-              await updateDoc(doc(db, "DropRecords", editId), recordData);
-              alert("紀錄已更新！");
-          } else {
-              recordData.date = new Date().toISOString().split('T')[0];
-              await addDoc(collection(db, "DropRecords"), recordData);
-              alert(`新增成功\n結算：${myCrystalIncome} 億`);
-          }
-          
-          resetFormState();
-          loadRecords(); 
+          if (editId) { await updateDoc(doc(db, "DropRecords", editId), recordData); alert("紀錄已更新！"); } 
+          else { recordData.date = new Date().toISOString().split('T')[0]; await addDoc(collection(db, "DropRecords"), recordData); alert(`新增成功\n結算：${myCrystalIncome} 億`); }
+          resetFormState(); loadRecords(); 
       } catch (error) { console.error(error); alert("儲存失敗"); resetFormState(); }
   });
 
-  // 取消編輯按鈕
   cancelEditBtn.addEventListener("click", resetFormState);
-
   function resetFormState() {
-      document.getElementById("record-form").reset();
-      document.getElementById("edit-doc-id").value = "";
-      if(bossSelect) bossSelect.clear();
-      if(itemSelect) itemSelect.clear();
-      
-      document.getElementById("form-title").innerText = "新增討伐紀錄";
-      saveBtn.innerText = "💾 儲存紀錄";
-      saveBtn.classList.replace("btn-primary", "btn-dark");
-      cancelEditBtn.classList.add("d-none");
-      saveBtn.disabled = false;
+      document.getElementById("record-form").reset(); document.getElementById("edit-doc-id").value = "";
+      if(bossSelect) bossSelect.clear(); if(itemSelect) itemSelect.clear();
+      document.getElementById("form-title").innerText = "新增討伐紀錄"; saveBtn.innerText = "💾 儲存紀錄"; saveBtn.classList.replace("btn-primary", "btn-dark"); cancelEditBtn.classList.add("d-none"); saveBtn.disabled = false;
   }
 
   // ==========================================
-  // [模組 F] 編輯與刪除紀錄邏輯
+  // [模組 F] 表格操作邏輯 (刪除 & 進入編輯)
   // ==========================================
   document.getElementById("table-body").addEventListener("click", async (e) => {
-      // 刪除
       const btnDelete = e.target.closest(".btn-delete-record");
-      if (btnDelete) {
-          if (confirm("確定刪除此紀錄？無法復原。")) {
-              try { await deleteDoc(doc(db, "DropRecords", btnDelete.getAttribute("data-id"))); loadRecords(); } catch (err) { alert("刪除失敗"); }
-          }
-          return;
-      }
+      if (btnDelete) { if (confirm("確定刪除此紀錄？無法復原。")) { try { await deleteDoc(doc(db, "DropRecords", btnDelete.getAttribute("data-id"))); loadRecords(); } catch (err) { alert("刪除失敗"); } } return; }
 
-      // 編輯
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
-          const docId = btnEdit.getAttribute("data-id");
-          const targetData = currentRecordsData.find(d => d.id === docId);
+          const docId = btnEdit.getAttribute("data-id"); const targetData = currentRecordsData.find(d => d.id === docId);
           if (targetData) {
               document.getElementById("edit-doc-id").value = docId;
-              
               if(bossSelect) bossSelect.setValue(targetData.boss_name);
-              document.getElementById("input-teammates").value = targetData.teammates.join(" "); // 用空白還原
-              document.getElementById("input-clear-time").value = targetData.clear_time || "";
-              document.getElementById("input-lives").value = targetData.lives_left || "";
-              document.getElementById("input-memo").value = targetData.memo || "";
+              document.getElementById("input-teammates").value = targetData.teammates.join(" "); 
+              document.getElementById("input-clear-time").value = targetData.clear_time || ""; document.getElementById("input-lives").value = targetData.lives_left || ""; document.getElementById("input-memo").value = targetData.memo || "";
               
-              if(itemSelect && targetData.item_name !== "無") {
-                  itemSelect.addOption({value: targetData.item_name, text: targetData.item_name});
-                  itemSelect.setValue(targetData.item_name);
-              } else {
-                  itemSelect.setValue("");
-              }
+              if(itemSelect && targetData.item_name !== "無") { itemSelect.addOption({value: targetData.item_name, text: targetData.item_name}); itemSelect.setValue(targetData.item_name); } 
+              else { itemSelect.setValue(""); }
 
-              document.getElementById("input-status").value = targetData.status;
-              document.getElementById("input-item-price").value = targetData.item_total_price_billion || "";
-              document.getElementById("input-payout-status").value = targetData.payout_status;
-
-              // 變更介面為編輯模式
-              document.getElementById("form-title").innerText = "✏️ 編輯討伐紀錄";
-              saveBtn.innerText = "💾 更新紀錄";
-              saveBtn.classList.replace("btn-dark", "btn-primary");
-              cancelEditBtn.classList.remove("d-none");
-
-              // 畫面滑動到表單
+              document.getElementById("input-status").value = targetData.status; document.getElementById("input-item-price").value = targetData.item_total_price_billion || ""; document.getElementById("input-payout-status").value = targetData.payout_status;
+              document.getElementById("form-title").innerText = "✏️ 編輯討伐紀錄"; saveBtn.innerText = "💾 更新紀錄"; saveBtn.classList.replace("btn-dark", "btn-primary"); cancelEditBtn.classList.remove("d-none");
               window.scrollTo({ top: 0, behavior: 'smooth' });
           }
       }
   });
 
   // ==========================================
-  // [模組 G] 複製紀錄摘要 (優化排版)
+  // [模組 G] 複製摘要與 CSV 匯出
   // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
-      const weekFilter = document.getElementById("filter-week").value;
-      const boundaries = getWeekBoundaries();
-      let filteredRecords = currentRecordsData.filter(data => {
-          const recordDate = new Date(data.date);
-          if (weekFilter === "this_week") return recordDate >= boundaries.thisWeekStart;
-          if (weekFilter === "last_week") return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
-          return true; 
-      });
-
+      const boundaries = getWeekBoundaries(); const weekFilter = document.getElementById("filter-week").value;
+      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar && (weekFilter === "all" || (weekFilter === "this_week" ? new Date(d.date) >= boundaries.thisWeekStart : new Date(d.date) >= boundaries.lastWeekStart && new Date(d.date) < boundaries.thisWeekStart)));
       if(filteredRecords.length === 0){ alert("目前無資料可供輸出。"); return; }
-
-      let titleWeek = weekFilter === "this_week" ? "【本週】" : weekFilter === "last_week" ? "【上週】" : "【近期】";
-      let report = `📊 ${activeChar} ${titleWeek}王團總結 📊\n------------------------\n`;
-      let totalCrys = 0, totalDiv = 0;
-
+      let report = `📊 ${activeChar} 討伐摘要 📊\n------------------------\n`; let totalCrys = 0, totalDiv = 0; let drops = [];
       filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(d => {
-          totalCrys += d.crystal_income_billion;
-          if(d.my_dividend_billion) totalDiv += d.my_dividend_billion;
-          
+          totalCrys += d.crystal_income_billion; if(d.my_dividend_billion) totalDiv += d.my_dividend_billion;
           let dropsInfo = d.item_name !== "無" && d.item_name !== "" ? `｜📦 ${d.item_name}` : "";
-          let totalEarned = (d.crystal_income_billion + (d.my_dividend_billion || 0)).toFixed(2);
-          
-          // 簡化 Boss 名稱顯示 (拔掉價格標籤)
-          let cleanBossName = d.boss_name.split(" ")[0]; 
-          report += `⚔️ ${cleanBossName} (${d.total_players}人) ｜ 💰 共計: ${totalEarned}億 ${dropsInfo}\n`;
+          report += `⚔️ ${d.boss_name.split(" ")[0]} (${d.total_players}人) ｜ 💰 共計: ${(d.crystal_income_billion + (d.my_dividend_billion || 0)).toFixed(2)}億 ${dropsInfo}\n`;
       });
-
-      report += `------------------------\n💎 結晶收益: ${totalCrys.toFixed(2)} 億\n✨ 分紅收益: ${totalDiv.toFixed(2)} 億\n🔥 總計實收: ${(totalCrys + totalDiv).toFixed(2)} 億`;
+      report += `------------------------\n🔥 總計實收: ${(totalCrys + totalDiv).toFixed(2)} 億`;
       navigator.clipboard.writeText(report).then(() => alert("✅ 摘要已複製！\n\n" + report));
   });
 
-  // [模組 H] 匯出 CSV (同前，沿用 currentRecordsData 效能更好)
   document.getElementById("btn-export-csv").addEventListener("click", () => {
-      let filteredRecords = currentRecordsData; // 略過篩選邏輯，套用與複製相同判斷
+      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar);
       if(filteredRecords.length === 0){ alert("無資料可匯出"); return; }
       let csv = "\ufeff日期,目標名稱,通關時間,剩餘命數,結晶收益(億),取得物品,售出總價,分紅收益(億),物品狀態,帳款狀態,同行隊友,備註\n";
       filteredRecords.forEach((d) => {
-          let teamStr = d.teammates && d.teammates.length > 0 ? `"${d.teammates.join("、")}"` : "無";
-          let itemStr = d.item_name !== "無" && d.item_name !== "" ? `"${d.item_name}"` : "無";
-          let memoStr = d.memo ? `"${d.memo.replace(/"/g, '""')}"` : ""; 
-          csv += `${d.date},${d.boss_name},${d.clear_time||""},${d.lives_left||""},${d.crystal_income_billion},${itemStr},${d.item_total_price_billion||0},${d.my_dividend_billion||0},${d.status},${d.payout_status||"無需分帳"},${teamStr},${memoStr}\n`;
+          let teamStr = d.teammates && d.teammates.length > 0 ? `"${d.teammates.join("、")}"` : "無"; let memoStr = d.memo ? `"${d.memo.replace(/"/g, '""')}"` : ""; 
+          csv += `${d.date},${d.boss_name},${d.clear_time||""},${d.lives_left||""},${d.crystal_income_billion},${d.item_name !== "無" ? `"${d.item_name}"` : "無"},${d.item_total_price_billion||0},${d.my_dividend_billion||0},${d.status},${d.payout_status||"無需分帳"},${teamStr},${memoStr}\n`;
       });
       const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `${activeChar}_收益紀錄.csv`;
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
