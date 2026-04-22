@@ -20,10 +20,10 @@
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
 
-        /* 🟩 新版側邊欄熱力圖 (深色主題) */
-        .sidebar-heatmap { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px 10px; overflow-x: auto; }
-        .sidebar-heatmap::-webkit-scrollbar { height: 6px; }
-        .sidebar-heatmap::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
+        /* 🟩 側邊欄：熱力圖與任務打勾 */
+        .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px 10px; overflow-x: auto; }
+        .sidebar-module::-webkit-scrollbar { height: 6px; }
+        .sidebar-module::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; grid-auto-flow: column; width: max-content; }
         .heatmap-cell { width: 12px; height: 12px; border-radius: 2px; transition: 0.2s;}
         .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 10; position: relative;}
@@ -33,6 +33,9 @@
         .hc-3 { background-color: #26a641; }
         .hc-4 { background-color: #39d353; }
         .heatmap-legend { display: flex; align-items: center; justify-content: flex-end; font-size: 0.75rem; color: #bdc3c7; gap: 4px; margin-top: 8px; }
+        
+        .task-checkbox-label { color: #bdc3c7; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .form-check-input:checked + .task-checkbox-label { color: #3498db; text-decoration: line-through; opacity: 0.7; }
 
         @media (max-width: 768px) {
             .sidebar { min-height: auto; position: sticky; top: 0; z-index: 1000; padding-top: 10px !important; padding-bottom: 0 !important; }
@@ -63,7 +66,13 @@
             <h5 class="text-center mb-3 text-white">收益管理系統</h5>
             <div id="character-list"></div>
             
-            <div class="sidebar-heatmap mt-4">
+            <div class="sidebar-module mt-3">
+                <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✅ 本週保底進度</h6>
+                <div id="weekly-tasks-container">
+                    </div>
+            </div>
+
+            <div class="sidebar-module mt-2">
                 <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">🔥 討伐活躍度 (近16週)</h6>
                 <div class="heatmap-grid" id="heatmap-grid"></div>
                 <div class="heatmap-legend">
@@ -128,44 +137,52 @@
                         <input type="hidden" id="edit-doc-id" value="">
                         
                         <form id="record-form">
-                            <div class="mb-3">
-                                <label class="form-label">討伐目標 <small class="text-muted">(支援輸入簡稱)</small></label>
-                                <select id="input-boss" placeholder="輸入或選擇目標...">
-                                    <option value="" disabled selected>請選擇...</option>
-                                    <optgroup label="Extreme / Ultimate (終極/極限)">
-                                        <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
-                                        <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
-                                        <option value="終極咖凌">終極咖凌 [極咖] (14.43億)</option>
-                                        <option value="終極最初的敵對者">終極最初的敵對者 (13.44億)</option>
-                                        <option value="終極監視者卡洛斯">終極監視者卡洛斯 [極狗] (12.37億)</option>
-                                        <option value="終極受選的賽蓮">終極受選的賽蓮 [極賽] (7.24億)</option>
-                                        <option value="終極史烏">終極史烏 [極史] (3.24億)</option>
-                                    </optgroup>
-                                    <optgroup label="Hard / Chaos (困難/混沌)">
-                                        <option value="困難黑魔法師">困難黑魔法師 [困黑] (9.91億)</option>
-                                        <option value="困難巴德利斯">困難巴德利斯 (8.4億)</option>
-                                        <option value="困難林波">困難林波 [困林波] (7.49億)</option>
-                                        <option value="困難咖凌">困難咖凌 [困咖] (7.21億)</option>
-                                        <option value="困難最初的敵對者">困難最初的敵對者 [困敵對者] (6.82億)</option>
-                                        <option value="混沌監視者卡洛斯">混沌監視者卡洛斯 [困狗] (6.19億)</option>
-                                        <option value="困難受選的賽蓮">困難受選的賽蓮 [困賽] (2.72億)</option>
-                                        <option value="困難真希拉">困難真希拉 [困真] (1.45億)</option>
-                                        <option value="困難威爾">困難威爾 [困威] (1.27億)</option>
-                                        <option value="混沌守護天使綠水靈">混沌守護天使綠水靈 [困綠] (1.26億)</option>
-                                        <option value="困難頓凱爾">困難頓凱爾 [困頓] (1.26億)</option>
-                                        <option value="混沌戴斯克">混沌戴斯克 [困眼] (1.11億)</option>
-                                        <option value="困難露希妲">困難露希妲 [困露] (1.02億)</option>
-                                        <option value="困難史烏">困難史烏 [困史] (0.92億)</option>
-                                        <option value="困難戴米安">困難戴米安 [困戴] (0.86億)</option>
-                                    </optgroup>
-                                    <optgroup label="Normal (普通)">
-                                        <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
-                                        <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.5億)</option>
-                                        <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.5億)</option>
-                                    </optgroup>
-                                </select>
+                            <div class="row mb-3">
+                                <div class="col-12 col-md-5 mb-3 mb-md-0">
+                                    <label class="form-label">討伐日期</label>
+                                    <input type="date" class="form-control" id="input-date">
+                                </div>
+                                <div class="col-12 col-md-7">
+                                    <label class="form-label">討伐目標</label>
+                                    <select id="input-boss" placeholder="輸入或選擇..."></select>
+                                </div>
                             </div>
                             
+                            <div class="d-none" id="hidden-boss-options">
+                                <option value="" disabled selected>請選擇...</option>
+                                <optgroup label="Extreme / Ultimate (終極/極限)">
+                                    <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
+                                    <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
+                                    <option value="終極咖凌">終極咖凌 [極咖] (14.43億)</option>
+                                    <option value="終極最初的敵對者">終極最初的敵對者 (13.44億)</option>
+                                    <option value="終極監視者卡洛斯">終極監視者卡洛斯 [極狗] (12.37億)</option>
+                                    <option value="終極受選的賽蓮">終極受選的賽蓮 [極賽] (7.24億)</option>
+                                    <option value="終極史烏">終極史烏 [極史] (3.24億)</option>
+                                </optgroup>
+                                <optgroup label="Hard / Chaos (困難/混沌)">
+                                    <option value="困難黑魔法師">困難黑魔法師 [困黑] (9.91億)</option>
+                                    <option value="困難巴德利斯">困難巴德利斯 (8.4億)</option>
+                                    <option value="困難林波">困難林波 [困林波] (7.49億)</option>
+                                    <option value="困難咖凌">困難咖凌 [困咖] (7.21億)</option>
+                                    <option value="困難最初的敵對者">困難最初的敵對者 [困敵對者] (6.82億)</option>
+                                    <option value="混沌監視者卡洛斯">混沌監視者卡洛斯 [困狗] (6.19億)</option>
+                                    <option value="困難受選的賽蓮">困難受選的賽蓮 [困賽] (2.72億)</option>
+                                    <option value="困難真希拉">困難真希拉 [困真] (1.45億)</option>
+                                    <option value="困難威爾">困難威爾 [困威] (1.27億)</option>
+                                    <option value="混沌守護天使綠水靈">混沌守護天使綠水靈 [困綠] (1.26億)</option>
+                                    <option value="困難頓凱爾">困難頓凱爾 [困頓] (1.26億)</option>
+                                    <option value="混沌戴斯克">混沌戴斯克 [困眼] (1.11億)</option>
+                                    <option value="困難露希妲">困難露希妲 [困露] (1.02億)</option>
+                                    <option value="困難史烏">困難史烏 [困史] (0.92億)</option>
+                                    <option value="困難戴米安">困難戴米安 [困戴] (0.86億)</option>
+                                </optgroup>
+                                <optgroup label="Normal (普通)">
+                                    <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
+                                    <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.5億)</option>
+                                    <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.5億)</option>
+                                </optgroup>
+                            </div>
+
                             <div class="mb-3">
                                 <label class="form-label">同行隊友 <small class="text-muted">(可用空格或逗號隔開)</small></label>
                                 <input type="text" class="form-control" id="input-teammates" placeholder="無則留空 (單人討伐)">
@@ -188,35 +205,38 @@
                             </div>
                             <hr>
 
-                            <div class="mb-3">
-                                <label class="form-label">掉落物品 <small class="text-muted">(支援直接輸入新建)</small></label>
-                                <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="has-drop-check" style="cursor: pointer;">
+                                <label class="form-check-label fw-bold text-primary" for="has-drop-check" style="cursor: pointer;">👑 登記掉落特殊物品 (飾品/箱子等)</label>
                             </div>
 
-                            <div class="row mb-4">
-                                <div class="col-12 col-md-4 mb-2 mb-md-0">
-                                    <label class="form-label">物品狀態</label>
-                                    <select class="form-select" id="input-status">
-                                        <option value="無">僅紀錄</option>
-                                        <option value="待售出">待售出</option>
-                                        <option value="已售出">已售出</option>
-                                    </select>
+                            <div id="drop-fields-container" class="d-none">
+                                <div class="mb-3">
+                                    <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
                                 </div>
-                                <div class="col-6 col-md-4">
-                                    <label class="form-label">總售價 <small class="text-muted">(億)</small></label>
-                                    <input type="number" class="form-control" id="input-item-price" placeholder="例: 150" step="0.1" min="0">
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <label class="form-label">分帳狀態</label>
-                                    <select class="form-select" id="input-payout-status">
-                                        <option value="無需分帳">無需分帳</option>
-                                        <option value="未結清">未結清</option>
-                                        <option value="已結清">已結清</option>
-                                    </select>
+
+                                <div class="row mb-4">
+                                    <div class="col-12 col-md-4 mb-2 mb-md-0">
+                                        <label class="form-label">物品狀態</label>
+                                        <select class="form-select" id="input-status">
+                                            <option value="待售出">待售出</option>
+                                            <option value="已售出">已售出</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label">總售價 <small class="text-muted">(億)</small></label>
+                                        <input type="number" class="form-control" id="input-item-price" placeholder="例: 150" step="0.1" min="0">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label">分帳狀態</label>
+                                        <select class="form-select" id="input-payout-status">
+                                            <option value="未結清">未結清</option>
+                                            <option value="已結清">已結清</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 mt-4">
                                 <button type="button" class="btn btn-dark w-100 py-2" id="btn-save">💾 儲存紀錄</button>
                                 <button type="button" class="btn btn-outline-secondary py-2 d-none" id="btn-cancel-edit">取消</button>
                             </div>
@@ -319,6 +339,17 @@
   let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["請輸入角色暱稱"];
   let activeChar = myCharacters[0] || ""; 
   let currentRecordsData = [];
+
+  // ==========================================
+  // [模組 A] UI 切換邏輯 (掉寶開關)
+  // ==========================================
+  const dropCheck = document.getElementById("has-drop-check");
+  const dropContainer = document.getElementById("drop-fields-container");
+
+  dropCheck.addEventListener("change", (e) => {
+      if(e.target.checked) dropContainer.classList.remove("d-none");
+      else dropContainer.classList.add("d-none");
+  });
   
   // ==========================================
   // [模組 0] 自訂掉寶管理系統
@@ -347,40 +378,32 @@
   function getCustomItems() { return JSON.parse(localStorage.getItem("ms_custom_items")) || []; }
   
   function renderCustomItemList() {
-      const list = document.getElementById("custom-item-list");
-      list.innerHTML = "";
-      const items = getCustomItems();
+      const list = document.getElementById("custom-item-list"); list.innerHTML = ""; const items = getCustomItems();
       if(items.length === 0) { list.innerHTML = `<li class="list-group-item text-muted text-center">目前無自訂物品</li>`; return; }
-      
       items.forEach((item, index) => {
-          const li = document.createElement("li");
-          li.className = "list-group-item d-flex justify-content-between align-items-center";
-          li.innerHTML = `<span>${item}</span><button class="btn btn-sm btn-outline-danger" onclick="window.deleteCustomItem(${index})">刪除</button>`;
-          list.appendChild(li);
+          const li = document.createElement("li"); li.className = "list-group-item d-flex justify-content-between align-items-center";
+          li.innerHTML = `<span>${item}</span><button class="btn btn-sm btn-outline-danger" onclick="window.deleteCustomItem(${index})">刪除</button>`; list.appendChild(li);
       });
   }
 
   document.getElementById("btn-add-custom-item").addEventListener("click", () => {
-      const input = document.getElementById("input-custom-item");
-      const val = input.value.trim();
+      const val = document.getElementById("input-custom-item").value.trim();
       if(val) {
           let items = getCustomItems();
           if(!items.includes(val)) { items.push(val); localStorage.setItem("ms_custom_items", JSON.stringify(items)); }
-          input.value = "";
-          renderCustomItemList(); initItemSelect(); 
+          document.getElementById("input-custom-item").value = ""; renderCustomItemList(); initItemSelect(); 
       }
   });
 
   window.deleteCustomItem = function(index) {
       let items = getCustomItems(); items.splice(index, 1);
-      localStorage.setItem("ms_custom_items", JSON.stringify(items));
-      renderCustomItemList(); initItemSelect();
+      localStorage.setItem("ms_custom_items", JSON.stringify(items)); renderCustomItemList(); initItemSelect();
   }
 
   function initItemSelect() {
       if (itemSelect) { itemSelect.destroy(); } 
       const customItems = getCustomItems().map(name => ({ group: "📌 我的自訂物品", value: name, text: name }));
-      const allOptions = [{group:"系統預設", value:"", text:"無 (僅紀錄結晶)"}, ...customItems, ...defaultItemOptions];
+      const allOptions = [...customItems, ...defaultItemOptions];
       
       itemSelect = new TomSelect("#input-item-name", {
           options: allOptions,
@@ -392,12 +415,12 @@
               { value: "研磨石 / 其他", label: "研磨石 / 其他" }
           ],
           optgroupField: 'group', labelField: 'text', valueField: 'value', searchField: ['text'],
-          create: true, placeholder: "選擇或輸入物品..."
+          create: true, placeholder: "選擇或輸入掉落物品..."
       });
   }
 
   // ==========================================
-  // [模組 A] 登入與介面切換 
+  // [模組 B] 登入與介面切換 
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -405,9 +428,13 @@
           document.getElementById("user-name").innerText = currentUserName;
           loginScreen.style.display = "none"; mainApp.style.display = "block"; 
           
-          if (!bossSelect) bossSelect = new TomSelect("#input-boss", { create: false, placeholder: "輸入簡稱或選擇目標..." });
-          initItemSelect(); 
-          renderCustomItemList(); 
+          if (!bossSelect) {
+              // 把隱藏的 option 塞給 TomSelect
+              document.getElementById("input-boss").innerHTML = document.getElementById("hidden-boss-options").innerHTML;
+              bossSelect = new TomSelect("#input-boss", { create: false, placeholder: "輸入簡稱或選擇目標..." });
+          }
+          initItemSelect(); renderCustomItemList(); 
+          document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; // 初始化日期為今天
 
           renderSidebar(); loadRecords(); 
       } else {
@@ -419,7 +446,7 @@
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定要登出系統嗎？")) signOut(auth); });
 
   // ==========================================
-  // [模組 B] 重置時間計算
+  // [模組 C] 時間計算與 📝 週常保底任務系統
   // ==========================================
   function getWeekBoundaries() {
       const now = new Date(); const currentDay = now.getDay(); 
@@ -432,30 +459,51 @@
 
   function updateCountdowns() {
       const now = new Date();
-      
-      // 週王 (週四 00:00 重置)
       let daysToNextThu = (4 - now.getDay() + 7) % 7; 
-      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); 
-      nextThu.setHours(0, 0, 0, 0);
+      let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); nextThu.setHours(0, 0, 0, 0);
+      if (now.getTime() >= nextThu.getTime()) nextThu.setDate(nextThu.getDate() + 7);
       
-      // 💡 終極修正：如果算出來的目標時間已經是「過去式」(例如現在是週四 00:01)，那就直接往後推 7 天
-      if (now.getTime() >= nextThu.getTime()) {
-          nextThu.setDate(nextThu.getDate() + 7);
-      }
-      
-      // 黑魔 (每月1號 00:00 重置)
-      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1); 
-      nextMonth.setHours(0, 0, 0, 0);
-
-      const formatDiff = (target) => {
-          const diff = target - now;
-          return `${Math.floor(diff / 86400000)}天 ${Math.floor((diff / 3600000) % 24)}時 ${Math.floor((diff / 60000) % 60)}分`;
-      };
+      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1); nextMonth.setHours(0, 0, 0, 0);
+      const formatDiff = (target) => { const diff = target - now; return `${Math.floor(diff / 86400000)}天 ${Math.floor((diff / 3600000) % 24)}時 ${Math.floor((diff / 60000) % 60)}分`; };
       
       document.getElementById("reset-timer-week").innerText = formatDiff(nextThu);
       document.getElementById("reset-timer-month").innerText = formatDiff(nextMonth);
   }
   setInterval(updateCountdowns, 60000); updateCountdowns();
+
+  // 渲染左側週常保底清單
+  const weeklyTaskNames = ["地下水道", "公會城 / 跑旗", "每週任務 (解圖/跳舞)", "武陵道場"];
+  function renderWeeklyTasks() {
+      const container = document.getElementById("weekly-tasks-container"); container.innerHTML = "";
+      if(!activeChar) return;
+
+      const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
+      let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
+      
+      // 若存檔的週次不是本週，則全數重置為 false
+      if (savedData.weekStart !== thisWeekStart) {
+          savedData = { weekStart: thisWeekStart, tasks: {} };
+          localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData));
+      }
+
+      weeklyTaskNames.forEach((task, idx) => {
+          const isChecked = savedData.tasks[idx] ? "checked" : "";
+          const div = document.createElement("div"); div.className = "form-check mb-2";
+          div.innerHTML = `
+              <input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}>
+              <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>
+          `;
+          container.appendChild(div);
+      });
+
+      // 綁定點擊事件，自動儲存
+      document.querySelectorAll(".task-checkbox").forEach(chk => {
+          chk.addEventListener("change", (e) => {
+              savedData.tasks[e.target.dataset.idx] = e.target.checked;
+              localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData));
+          });
+      });
+  }
 
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
@@ -474,73 +522,47 @@
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
+      renderWeeklyTasks(); // 呼叫更新保底清單
   }
   document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("請輸入新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
 
   // ==========================================
-  // [模組 C] 🟩 繪製側邊欄熱力圖
+  // [模組 D] 🟩 熱力圖與表格讀取
   // ==========================================
   function renderHeatmap(records) {
-      const heatmapGrid = document.getElementById("heatmap-grid");
-      heatmapGrid.innerHTML = "";
-      
+      const heatmapGrid = document.getElementById("heatmap-grid"); heatmapGrid.innerHTML = "";
       const today = new Date(); today.setHours(0,0,0,0);
-      let startDate = new Date(today);
-      startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
+      let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
       
       let dateCounts = {};
-      records.forEach(r => { 
-          if(r.character_name === activeChar) { 
-              dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
-          }
-      });
+      records.forEach(r => { if(r.character_name === activeChar) dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; });
 
       let currDate = new Date(startDate);
       while(currDate <= today) {
-          let dateStr = currDate.toISOString().split('T')[0];
-          let count = dateCounts[dateStr] || 0;
-          
-          let cell = document.createElement("div");
-          cell.className = "heatmap-cell";
-          if(count === 0) cell.classList.add("hc-0");
-          else if(count <= 1) cell.classList.add("hc-1");
-          else if(count <= 2) cell.classList.add("hc-2");
-          else if(count <= 4) cell.classList.add("hc-3");
-          else cell.classList.add("hc-4");
-          
-          cell.title = `${dateStr} 討伐了 ${count} 隻王`;
-          heatmapGrid.appendChild(cell);
-          currDate.setDate(currDate.getDate() + 1);
+          let dateStr = currDate.toISOString().split('T')[0]; let count = dateCounts[dateStr] || 0;
+          let cell = document.createElement("div"); cell.className = "heatmap-cell";
+          if(count === 0) cell.classList.add("hc-0"); else if(count <= 1) cell.classList.add("hc-1"); else if(count <= 2) cell.classList.add("hc-2"); else if(count <= 4) cell.classList.add("hc-3"); else cell.classList.add("hc-4");
+          cell.title = `${dateStr} 討伐了 ${count} 隻王`; heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
-      
       setTimeout(() => { document.querySelector('.heatmap-container').scrollLeft = 9999; }, 100);
   }
 
-  // ==========================================
-  // [模組 D] 讀取資料與統計 (12隻獨立計算修正)
-  // ==========================================
   async function loadRecords() {
       if(!currentUserUid) return;
       const tableBody = document.getElementById("table-body");
-      
       try {
           tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">資料同步中...</td></tr>';
           const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
           const querySnapshot = await getDocs(q);
           
           let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0; 
-          let charWeeklyCount = 0; // 💡 修正：改為計算單一角色本週數量
-          let records = []; const boundaries = getWeekBoundaries();
+          let charWeeklyCount = 0; let records = []; const boundaries = getWeekBoundaries();
 
           querySnapshot.forEach((doc) => { 
               let data = doc.data(); data.id = doc.id; 
-              
-              // 💡 修正邏輯：只有這隻角色的紀錄，才算進本週的 12 隻配額裡
               if (data.character_name === activeChar) {
                   records.push(data); 
-                  if (new Date(data.date) >= boundaries.thisWeekStart) {
-                      charWeeklyCount++;
-                  }
+                  if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
               }
           });
           
@@ -549,14 +571,12 @@
           document.getElementById("weekly-limit-count").parentElement.className = charWeeklyCount >= 12 
               ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" 
               : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
-          
           renderHeatmap(records);
 
-          // 這裡 records 已經全部是 activeChar 的資料了，只需過濾週次即可
           records.sort((a, b) => new Date(b.date) - new Date(a.date));
           const weekFilter = document.getElementById("filter-week").value;
           let filteredRecords = records.filter(data => {
-              const recordDate = new Date(data.date);
+              const recordDate = new Date(data.date + "T00:00:00");
               if (weekFilter === "this_week") return recordDate >= boundaries.thisWeekStart;
               if (weekFilter === "last_week") return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
               return true; 
@@ -571,7 +591,7 @@
 
               let statusBadge = `<span class="status-pending">${data.status}</span>`;
               if (data.status === "已售出" || data.status === "已分紅") statusBadge = `<span class="status-sold">已售出</span>`;
-              if (data.status === "無") statusBadge = `<span class="text-muted">--</span>`;
+              if (data.status === "無" || data.status === "僅紀錄") statusBadge = `<span class="text-muted">--</span>`;
 
               let payoutBadge = data.payout_status === "未結清" ? ` <span class="badge bg-danger">未結清</span>` : data.payout_status === "已結清" ? ` <span class="badge bg-success">已結清</span>` : "";
 
@@ -612,44 +632,58 @@
   document.getElementById("filter-week").addEventListener("change", loadRecords);
 
   // ==========================================
-  // [模組 E] 存檔與編輯更新
+  // [模組 E] 存檔與編輯更新 (加入自訂日期與掉寶開關)
   // ==========================================
   const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
   const saveBtn = document.getElementById("btn-save"); const cancelEditBtn = document.getElementById("btn-cancel-edit");
 
   saveBtn.addEventListener("click", async () => {
       if(!currentUserUid) { alert("請先登入系統。"); return; }
+      
+      const recordDate = document.getElementById("input-date").value;
+      if (!recordDate) { alert("請選擇討伐日期！"); return; }
+      
       const boss = document.getElementById("input-boss").value; if (!boss || boss === "") { alert("請選擇討伐目標！"); return; }
 
       const teammatesStr = document.getElementById("input-teammates").value;
       let teamArray = teammatesStr.split(/[\s,，、]+/).filter(name => name.trim() !== "");
       const totalPlayers = teamArray.length + 1; 
 
-      const itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
       const basePrice = bossCrystalPrices[boss] || 0;
       const myCrystalIncome = (basePrice / totalPlayers).toFixed(2); 
-      const myDividend = itemTotalPrice > 0 ? (itemTotalPrice / totalPlayers).toFixed(2) : 0;
+      
+      // 💡 判斷是否有勾選「登記掉寶」
+      let itemName = "無", itemTotalPrice = 0, myDividend = 0, status = "僅紀錄", payoutStatus = "無需分帳";
+      
+      if (dropCheck.checked) {
+          itemName = document.getElementById("input-item-name").value || "無";
+          itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
+          myDividend = itemTotalPrice > 0 ? (itemTotalPrice / totalPlayers).toFixed(2) : 0;
+          status = document.getElementById("input-status").value;
+          payoutStatus = document.getElementById("input-payout-status").value;
 
-      const itemName = document.getElementById("input-item-name").value;
-      if (itemName !== "" && itemName !== "無" && !defaultItemOptions.some(d => d.value === itemName)) {
-          let items = getCustomItems();
-          if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
+          // 學習新掉寶
+          if (itemName !== "無" && !defaultItemOptions.some(d => d.value === itemName)) {
+              let items = getCustomItems();
+              if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
+          }
       }
 
       const recordData = {
           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+          date: recordDate, // 💡 採用使用者自訂的日期
           boss_name: boss, teammates: teamArray, total_players: totalPlayers,
           crystal_income_billion: parseFloat(myCrystalIncome),
           clear_time: document.getElementById("input-clear-time").value.trim(), lives_left: document.getElementById("input-lives").value.trim(), memo: document.getElementById("input-memo").value.trim(), 
           item_total_price_billion: itemTotalPrice, my_dividend_billion: parseFloat(myDividend),
-          item_name: itemName || "無", status: document.getElementById("input-status").value, payout_status: document.getElementById("input-payout-status").value
+          item_name: itemName, status: status, payout_status: payoutStatus
       };
 
       const editId = document.getElementById("edit-doc-id").value;
       try {
           saveBtn.innerText = "處理中..."; saveBtn.disabled = true;
           if (editId) { await updateDoc(doc(db, "DropRecords", editId), recordData); alert("紀錄已更新！"); } 
-          else { recordData.date = new Date().toISOString().split('T')[0]; await addDoc(collection(db, "DropRecords"), recordData); alert(`新增成功\n結算：${myCrystalIncome} 億`); }
+          else { await addDoc(collection(db, "DropRecords"), recordData); alert(`新增成功\n結算：${myCrystalIncome} 億`); }
           resetFormState(); loadRecords(); 
       } catch (error) { console.error(error); alert("儲存失敗"); resetFormState(); }
   });
@@ -657,12 +691,17 @@
   cancelEditBtn.addEventListener("click", resetFormState);
   function resetFormState() {
       document.getElementById("record-form").reset(); document.getElementById("edit-doc-id").value = "";
+      document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; // 日期重置為今天
+      
+      // 關閉並隱藏掉寶區塊
+      dropCheck.checked = false; dropContainer.classList.add("d-none");
+      
       if(bossSelect) bossSelect.clear(); if(itemSelect) itemSelect.clear();
       document.getElementById("form-title").innerText = "新增討伐紀錄"; saveBtn.innerText = "💾 儲存紀錄"; saveBtn.classList.replace("btn-primary", "btn-dark"); cancelEditBtn.classList.add("d-none"); saveBtn.disabled = false;
   }
 
   // ==========================================
-  // [模組 F] 表格操作邏輯 (刪除 & 進入編輯)
+  // [模組 F] 表格操作邏輯 (進入編輯載入舊資料)
   // ==========================================
   document.getElementById("table-body").addEventListener("click", async (e) => {
       const btnDelete = e.target.closest(".btn-delete-record");
@@ -673,14 +712,23 @@
           const docId = btnEdit.getAttribute("data-id"); const targetData = currentRecordsData.find(d => d.id === docId);
           if (targetData) {
               document.getElementById("edit-doc-id").value = docId;
+              document.getElementById("input-date").value = targetData.date; // 💡 載入當時紀錄的日期
               if(bossSelect) bossSelect.setValue(targetData.boss_name);
               document.getElementById("input-teammates").value = targetData.teammates.join(" "); 
               document.getElementById("input-clear-time").value = targetData.clear_time || ""; document.getElementById("input-lives").value = targetData.lives_left || ""; document.getElementById("input-memo").value = targetData.memo || "";
               
-              if(itemSelect && targetData.item_name !== "無") { itemSelect.addOption({value: targetData.item_name, text: targetData.item_name}); itemSelect.setValue(targetData.item_name); } 
-              else { itemSelect.setValue(""); }
+              // 💡 如果這筆紀錄當時有掉寶，自動打開開關並載入資料
+              if(targetData.item_name && targetData.item_name !== "無") { 
+                  dropCheck.checked = true; dropContainer.classList.remove("d-none");
+                  if(itemSelect) { itemSelect.addOption({value: targetData.item_name, text: targetData.item_name}); itemSelect.setValue(targetData.item_name); }
+                  document.getElementById("input-status").value = targetData.status || "待售出"; 
+                  document.getElementById("input-item-price").value = targetData.item_total_price_billion || ""; 
+                  document.getElementById("input-payout-status").value = targetData.payout_status || "未結清";
+              } else { 
+                  dropCheck.checked = false; dropContainer.classList.add("d-none");
+                  if(itemSelect) itemSelect.setValue(""); 
+              }
 
-              document.getElementById("input-status").value = targetData.status; document.getElementById("input-item-price").value = targetData.item_total_price_billion || ""; document.getElementById("input-payout-status").value = targetData.payout_status;
               document.getElementById("form-title").innerText = "✏️ 編輯討伐紀錄"; saveBtn.innerText = "💾 更新紀錄"; saveBtn.classList.replace("btn-dark", "btn-primary"); cancelEditBtn.classList.remove("d-none");
               window.scrollTo({ top: 0, behavior: 'smooth' });
           }
@@ -692,7 +740,7 @@
   // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
       const boundaries = getWeekBoundaries(); const weekFilter = document.getElementById("filter-week").value;
-      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar && (weekFilter === "all" || (weekFilter === "this_week" ? new Date(d.date) >= boundaries.thisWeekStart : new Date(d.date) >= boundaries.lastWeekStart && new Date(d.date) < boundaries.thisWeekStart)));
+      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar && (weekFilter === "all" || (weekFilter === "this_week" ? new Date(d.date+"T00:00:00") >= boundaries.thisWeekStart : new Date(d.date+"T00:00:00") >= boundaries.lastWeekStart && new Date(d.date+"T00:00:00") < boundaries.thisWeekStart)));
       if(filteredRecords.length === 0){ alert("目前無資料可供輸出。"); return; }
       let report = `📊 ${activeChar} 討伐摘要 📊\n------------------------\n`; let totalCrys = 0, totalDiv = 0; let drops = [];
       filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(d => {
