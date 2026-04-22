@@ -42,7 +42,7 @@
     </button>
 </div>
 
-<div id="main-app" class="container-fluid" style="display: none;">
+<div id="main-app" class="container-fluid d-none">
     <div class="row">
         <div class="col-md-2 sidebar p-0 pt-3">
             <h5 class="text-center mb-3 text-white">收益管理系統</h5>
@@ -247,13 +247,13 @@
 
   // 🔴🔴🔴 請務必替換為真實的 Firebase Config 金鑰 🔴🔴🔴
   const firebaseConfig = {
-    apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
-    authDomain: "maplestoryboss.firebaseapp.com",
-    projectId: "maplestoryboss",
-    storageBucket: "maplestoryboss.firebasestorage.app",
-    messagingSenderId: "198034430854",
-    appId: "1:198034430854:web:527ffcee039e223b972a07",
-    measurementId: "G-SG0DN633FC"
+      apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
+      authDomain: "maplestoryboss.firebaseapp.com",
+      projectId: "maplestoryboss",
+      storageBucket: "maplestoryboss.firebasestorage.app",
+      messagingSenderId: "198034430854",
+      appId: "1:198034430854:web:527ffcee039e223b972a07",
+      measurementId: "G-SG0DN633FC"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -273,21 +273,28 @@
   const dashboardTitle = document.getElementById("dashboard-title");
 
   // ==========================================
-  // [模組 A] 登入與登出邏輯
+  // [模組 A] 登入與登出邏輯 (修復畫面重疊 Bug)
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
           currentUserUid = user.uid; 
           currentUserName = user.displayName;
           document.getElementById("user-name").innerText = currentUserName;
-          loginScreen.style.display = "none"; 
-          mainApp.style.display = "block"; 
+          
+          // 使用 Bootstrap 類別徹底隱藏與顯示，解決 flex 衝突
+          loginScreen.classList.remove("d-flex");
+          loginScreen.classList.add("d-none");
+          mainApp.classList.remove("d-none");
+          mainApp.classList.add("d-block"); 
+          
           renderSidebar(); 
           loadRecords(); 
       } else {
           currentUserUid = null;
-          loginScreen.style.display = "flex"; 
-          mainApp.style.display = "none"; 
+          loginScreen.classList.remove("d-none");
+          loginScreen.classList.add("d-flex");
+          mainApp.classList.remove("d-block");
+          mainApp.classList.add("d-none"); 
       }
   });
 
@@ -383,7 +390,7 @@
 
 
   // ==========================================
-  // [模組 D] 讀取、篩選與渲染
+  // [模組 D] 讀取、過濾與渲染 (修正查詢邏輯以符合安全規則)
   // ==========================================
   async function loadRecords() {
       if(!currentUserUid) return;
@@ -392,15 +399,23 @@
       try {
           tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">資料同步中...</td></tr>';
 
-          const queryKey = `${currentUserUid}_${activeChar}`;
-          const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", queryKey));
+          // 💡 為了通過安全規則，向資料庫查詢時「明確指名」只要拿自己的 uid 的資料
+          const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
           const querySnapshot = await getDocs(q);
           
           let html = "";
           let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0; 
 
           let records = [];
-          querySnapshot.forEach((doc) => { let data = doc.data(); data.id = doc.id; records.push(data); });
+          querySnapshot.forEach((doc) => { 
+              let data = doc.data(); 
+              // 💡 取得資料後，在前端過濾出「當前角色」
+              if (data.character_name === activeChar) {
+                  data.id = doc.id; 
+                  records.push(data); 
+              }
+          });
+          
           records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
           const weekFilter = document.getElementById("filter-week").value;
@@ -473,7 +488,7 @@
   // ==========================================
   const bossCrystalPrices = {
       "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235,
-      "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857,
+      "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困难威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857,
       "普通巴德利斯": 5.6, "普通林波": 4.2, "普通最初的敵對者": 3.71, "普通咖凌": 3.617, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498, "普通真希拉": 1.244, "普通頓凱爾": 0.847, "普通戴斯克": 0.795, "普通威爾": 0.742, "普通露希妲": 0.643, "普通守護天使綠水靈": 0.43, "普通戴米安": 0.288, "普通史烏": 0.272,
       "簡單咖凌": 2.583, "簡單最初的敵對者": 2.527, "簡單監視者卡洛斯": 2.369, "簡單威爾": 0.574, "簡單露希妲": 0.538
   };
@@ -551,10 +566,14 @@
   // [模組 G] 複製紀錄摘要
   // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
-      const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", `${currentUserUid}_${activeChar}`));
+      // 💡 查詢邏輯同步修正
+      const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
       getDocs(q).then((querySnapshot) => {
           let records = [];
-          querySnapshot.forEach(doc => records.push(doc.data()));
+          querySnapshot.forEach(doc => {
+              let data = doc.data();
+              if (data.character_name === activeChar) records.push(data);
+          });
           
           const weekFilter = document.getElementById("filter-week").value;
           const boundaries = getWeekBoundaries();
@@ -565,10 +584,10 @@
               return true; 
           });
 
-          if(filteredRecords.length === 0){ alert("目前範圍無資料可供匯出。"); return; }
+          if(filteredRecords.length === 0){ alert("目前範圍無資料可供輸出。"); return; }
 
           let titleWeek = weekFilter === "this_week" ? "【本週】" : weekFilter === "last_week" ? "【上週】" : "【近期】";
-          let report = `📊 ${activeChar} ${titleWeek}討伐報表 📊\n------------------------\n`;
+          let report = `📊 ${activeChar} ${titleWeek}討伐摘要 📊\n------------------------\n`;
           let totalCrys = 0, totalDiv = 0;
           let drops = [];
 
@@ -593,10 +612,10 @@
               report += `\n`;
           });
 
-          report += `------------------------\n💰 期間總收益：${(totalCrys + totalDiv).toFixed(2)} 億\n`;
+          report += `------------------------\n💰 期間總計：${(totalCrys + totalDiv).toFixed(2)} 億\n`;
           if (drops.length > 0) report += `✨ 物品紀錄：\n - ${drops.join("\n - ")}\n`;
 
-          navigator.clipboard.writeText(report).then(() => alert("✅ 報表已複製至剪貼簿！\n\n預覽：\n" + report));
+          navigator.clipboard.writeText(report).then(() => alert("✅ 摘要已複製至剪貼簿！\n\n預覽：\n" + report));
       });
   });
 
@@ -604,10 +623,14 @@
   // [模組 H] 匯出 CSV 
   // ==========================================
   document.getElementById("btn-export-csv").addEventListener("click", () => {
-      const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", `${currentUserUid}_${activeChar}`));
+      // 💡 查詢邏輯同步修正
+      const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
       getDocs(q).then((querySnapshot) => {
           let records = [];
-          querySnapshot.forEach(doc => records.push(doc.data()));
+          querySnapshot.forEach(doc => {
+              let data = doc.data();
+              if (data.character_name === activeChar) records.push(data);
+          });
           
           const weekFilter = document.getElementById("filter-week").value;
           const boundaries = getWeekBoundaries();
