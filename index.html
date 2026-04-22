@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>楓之谷打寶收益儀表板</title>
+    <title>楓之谷收益管理系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; }
-        .sidebar { min-height: 100vh; background-color: #1a252f; color: white; }
+        .sidebar { min-height: 100vh; background-color: #1a252f; color: white; display: flex; flex-direction: column; }
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid #2c3e50; transition: 0.2s; }
         .sidebar a:hover, .sidebar a.active { background-color: #2c3e50; color: #3498db; border-left: 4px solid #3498db; }
         .card-custom { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
@@ -15,7 +15,6 @@
         .status-sold { background-color: #d4edda; color: #155724; padding: 5px 10px; border-radius: 6px; font-size: 0.85em; }
         .crystal-text { color: #2980b9; font-weight: bold; }
         .dividend-text { color: #27ae60; font-weight: bold; }
-        
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
 
@@ -26,7 +25,7 @@
             #character-list::-webkit-scrollbar { display: none; }
             .char-item { flex-shrink: 0; min-width: 140px; border-left: none !important; border-bottom: 4px solid transparent; padding: 10px 15px; }
             .char-item.active { border-bottom: 4px solid #3498db !important; background-color: #2c3e50; }
-            #btn-add-char { text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px; margin-top: 0 !important; }
+            #btn-add-char, #btn-logout { text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px; margin-top: 0 !important; }
             .stat-card-wrapper { margin-bottom: 15px; }
             .border-start { border-left: none !important; border-top: 4px solid #ffc107 !important; }
             .border-danger-mobile { border-left: none !important; border-top: 4px solid #dc3545 !important; }
@@ -35,43 +34,52 @@
 </head>
 <body>
 
-<div class="container-fluid">
+<div id="login-screen" class="container-fluid d-flex flex-column justify-content-center align-items-center" style="height: 100vh; background-color: #1a252f;">
+    <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
+    <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
+    <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" class="me-2" alt="Google"> 使用 Google 帳號登入
+    </button>
+</div>
+
+<div id="main-app" class="container-fluid" style="display: none;">
     <div class="row">
         <div class="col-md-2 sidebar p-0 pt-3">
             <h5 class="text-center mb-3 text-white">收益管理系統</h5>
             <div id="character-list"></div>
-            <a href="#" id="btn-add-char" class="text-warning mt-3">➕ 新增角色...</a>
+            <a href="#" id="btn-add-char" class="text-warning mt-3">➕ 新增角色</a>
+            <a href="#" id="btn-logout" class="text-danger mt-auto mb-3">🚪 登出 (<span id="user-name"></span>)</a>
         </div>
 
         <div class="col-md-10 p-4">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
                 <h2 class="mb-0" id="dashboard-title">收益與討伐紀錄</h2>
-                <span class="badge bg-secondary fs-6 mt-2 mt-md-0">🔄 週王重置倒數：<span id="reset-timer">計算中...</span></span>
+                <span class="badge bg-secondary fs-6 mt-2 mt-md-0">🔄 系統重置倒數：<span id="reset-timer">計算中...</span></span>
             </div>
 
             <div class="row mb-4">
                 <div class="col-6 col-md-3 stat-card-wrapper">
                     <div class="card card-custom p-3 bg-white">
-                        <h6 class="text-muted">💎 結晶石總收益</h6>
+                        <h6 class="text-muted">💎 結晶石總計</h6>
                         <h3 class="crystal-text" id="stat-crystal">0 億</h3>
                     </div>
                 </div>
                 <div class="col-6 col-md-3 stat-card-wrapper">
                     <div class="card card-custom p-3 bg-white">
-                        <h6 class="text-muted">✨ 寶物分紅總計</h6>
+                        <h6 class="text-muted">✨ 分紅收益總計</h6>
                         <h3 class="dividend-text" id="stat-drop">0 億</h3>
                     </div>
                 </div>
                 <div class="col-6 col-md-3 stat-card-wrapper">
                     <div class="card card-custom p-3 bg-white border-start border-warning border-4">
-                        <h6 class="text-muted">⏳ 待售出裝備</h6>
+                        <h6 class="text-muted">⏳ 待售出物品</h6>
                         <h3 class="text-warning" id="stat-pending">0 件</h3>
                     </div>
                 </div>
                 <div class="col-6 col-md-3 stat-card-wrapper">
                     <div class="card card-custom p-3 bg-white border-start border-danger border-4 border-danger-mobile">
-                        <h6 class="text-muted">🤝 待結算分帳</h6>
-                        <h3 class="text-danger" id="stat-unsettled">0 件</h3>
+                        <h6 class="text-muted">🤝 待結算帳款</h6>
+                        <h3 class="text-danger" id="stat-unsettled">0 筆</h3>
                     </div>
                 </div>
             </div>
@@ -79,10 +87,10 @@
             <div class="row">
                 <div class="col-12 col-lg-4 mb-4">
                     <div class="card card-custom p-4">
-                        <h5 class="mb-4">新增打王紀錄</h5>
+                        <h5 class="mb-4">新增討伐紀錄</h5>
                         <form id="record-form">
                             <div class="mb-3">
-                                <label class="form-label">討伐 Boss</label>
+                                <label class="form-label">討伐目標</label>
                                 <select class="form-select" id="input-boss">
                                     <optgroup label="Extreme / Ultimate (終極/極限)">
                                         <option value="終極黑魔法師">終極黑魔法師 (30億)</option>
@@ -138,8 +146,8 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">同行隊友 (逗號分隔)</label>
-                                <input type="text" class="form-control" id="input-teammates" placeholder="留空代表單吃">
+                                <label class="form-label">同行隊友 (以逗號分隔)</label>
+                                <input type="text" class="form-control" id="input-teammates" placeholder="無則留空 (單人討伐)">
                             </div>
 
                             <div class="row mb-3">
@@ -152,25 +160,24 @@
                                     <input type="number" class="form-control" id="input-lives" placeholder="例: 5" min="0" max="10">
                                 </div>
                             </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">戰況備註 <small class="text-muted">(選填)</small></label>
-                                <textarea class="form-control" id="input-memo" rows="2" placeholder="例如：P3 誰沒綁到王、開場秒死..."></textarea>
-                            </div>
 
+                            <div class="mb-3">
+                                <label class="form-label">紀錄備註 <small class="text-muted">(選填)</small></label>
+                                <textarea class="form-control" id="input-memo" rows="2" placeholder="例如：特定機制處理、戰術分配等"></textarea>
+                            </div>
                             <hr>
 
                             <div class="mb-3">
-                                <label class="form-label">掉寶名稱 (無掉落請留空)</label>
-                                <input type="text" class="form-control" id="input-item-name" placeholder="例如：口紅控制機">
+                                <label class="form-label">掉落物品</label>
+                                <input type="text" class="form-control" id="input-item-name" placeholder="無則留空">
                             </div>
 
                             <div class="row mb-4">
                                 <div class="col-12 col-md-4 mb-2 mb-md-0">
                                     <label class="form-label">物品狀態</label>
                                     <select class="form-select" id="input-status">
-                                        <option value="無">僅紀錄 (無掉寶)</option>
-                                        <option value="待售出">待售出 (代售中)</option>
+                                        <option value="無">僅紀錄 (無物品)</option>
+                                        <option value="待售出">待售出</option>
                                         <option value="已售出">已售出</option>
                                     </select>
                                 </div>
@@ -182,13 +189,13 @@
                                     <label class="form-label">分帳狀態</label>
                                     <select class="form-select" id="input-payout-status">
                                         <option value="無需分帳">無需分帳</option>
-                                        <option value="未結清">未結清 (待收付)</option>
+                                        <option value="未結清">未結清</option>
                                         <option value="已結清">已結清</option>
                                     </select>
                                 </div>
                             </div>
                             
-                            <button type="button" class="btn btn-dark w-100 py-2" id="btn-save">💾 儲存紀錄</button>
+                            <button type="button" class="btn btn-dark w-100 py-2" id="btn-save">儲存紀錄</button>
                         </form>
                     </div>
                 </div>
@@ -205,24 +212,23 @@
                                 </select>
                             </div>
                             <div>
-                                <button id="btn-copy-line" class="btn btn-sm btn-success me-2">📋 複製戰報</button>
-                                <button id="btn-export-csv" class="btn btn-sm btn-outline-secondary">📥 匯出 CSV</button>
+                                <button id="btn-copy-line" class="btn btn-sm btn-outline-primary me-2">複製紀錄摘要</button>
+                                <button id="btn-export-csv" class="btn btn-sm btn-outline-secondary">匯出 CSV</button>
                             </div>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle text-center">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Boss & 戰況</th>
+                                        <th>目標與戰況</th>
                                         <th>💎 收益 (結晶+分紅)</th>
-                                        <th>📦 掉落寶物</th>
-                                        <th>狀態</th>
+                                        <th>📦 物品與分帳</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="table-body">
                                     <tr>
-                                        <td colspan="5" class="text-muted">尚無資料，請等待 Firebase 連線或新增紀錄</td>
+                                        <td colspan="4" class="text-muted">目前尚無紀錄</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -237,61 +243,84 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
+  // 🔴🔴🔴 請務必替換為真實的 Firebase Config 金鑰 🔴🔴🔴
   const firebaseConfig = {
-      apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
-      authDomain: "maplestoryboss.firebaseapp.com",
-      projectId: "maplestoryboss",
-      storageBucket: "maplestoryboss.firebasestorage.app",
-      messagingSenderId: "198034430854",
-      appId: "1:198034430854:web:527ffcee039e223b972a07",
-      measurementId: "G-SG0DN633FC"
+    apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
+    authDomain: "maplestoryboss.firebaseapp.com",
+    projectId: "maplestoryboss",
+    storageBucket: "maplestoryboss.firebasestorage.app",
+    messagingSenderId: "198034430854",
+    appId: "1:198034430854:web:527ffcee039e223b972a07",
+    measurementId: "G-SG0DN633FC"
   };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  let currentUserUid = null; 
+  let currentUserName = "";
 
-  let currentPlayer = localStorage.getItem("ms_player_id");
-  if (!currentPlayer) {
-      currentPlayer = prompt("歡迎使用收益系統！\n請輸入你的專屬玩家代號 (例如你的暱稱)：");
-      if (!currentPlayer || currentPlayer.trim() === "") currentPlayer = "訪客"; 
-      localStorage.setItem("ms_player_id", currentPlayer.trim());
-  }
+  const loginScreen = document.getElementById("login-screen");
+  const mainApp = document.getElementById("main-app");
 
   let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["劍豪 (本尊)"];
-  let activeChar = myCharacters[0]; 
-
+  let activeChar = myCharacters[0] || ""; 
   const charListContainer = document.getElementById("character-list");
   const dashboardTitle = document.getElementById("dashboard-title");
 
   // ==========================================
-  // [模組 0] 計算楓之谷週次邊界 (每週四 00:00 重置)
+  // [模組 A] 登入與登出邏輯
+  // ==========================================
+  onAuthStateChanged(auth, (user) => {
+      if (user) {
+          currentUserUid = user.uid; 
+          currentUserName = user.displayName;
+          document.getElementById("user-name").innerText = currentUserName;
+          loginScreen.style.display = "none"; 
+          mainApp.style.display = "block"; 
+          renderSidebar(); 
+          loadRecords(); 
+      } else {
+          currentUserUid = null;
+          loginScreen.style.display = "flex"; 
+          mainApp.style.display = "none"; 
+      }
+  });
+
+  document.getElementById("btn-login").addEventListener("click", () => {
+      signInWithPopup(auth, provider).catch(err => { alert("登入程序發生錯誤，請確認瀏覽器設定。"); });
+  });
+
+  document.getElementById("btn-logout").addEventListener("click", (e) => {
+      e.preventDefault();
+      if(confirm("確定要登出系統嗎？")) signOut(auth);
+  });
+
+  // ==========================================
+  // [模組 B] 系統重置時間計算 (每週四 00:00)
   // ==========================================
   function getWeekBoundaries() {
       const now = new Date();
-      const currentDay = now.getDay(); // 0=Sun, 1=Mon... 4=Thu
-      // 計算距離本週四過了幾天
+      const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
-      
       const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu);
       thisWeekStart.setHours(0, 0, 0, 0);
-      
       const lastWeekStart = new Date(thisWeekStart);
       lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-      
       return { thisWeekStart, lastWeekStart };
   }
 
-  // 更新倒數計時器
   function updateCountdown() {
       const now = new Date();
       const currentDay = now.getDay();
       let daysToNextThu = (4 - currentDay + 7) % 7;
       if (daysToNextThu === 0 && now.getHours() > 0) daysToNextThu = 7; 
-      
       let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu);
       nextThu.setHours(0, 0, 0, 0);
-      
       const diff = nextThu - now;
       const d = Math.floor(diff / (1000 * 60 * 60 * 24));
       const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
@@ -301,10 +330,12 @@
   setInterval(updateCountdown, 60000);
   updateCountdown();
 
-
+  // ==========================================
+  // [模組 C] 側邊欄渲染與角色管理
+  // ==========================================
   function renderSidebar() {
       charListContainer.innerHTML = ""; 
-      dashboardTitle.innerText = myCharacters.length === 0 ? `【${currentPlayer}】請先新增角色` : `【${currentPlayer}】${activeChar} - 討伐與收益紀錄`; 
+      dashboardTitle.innerText = myCharacters.length === 0 ? `請先新增角色` : `${activeChar} - 收益與討伐紀錄`; 
       
       myCharacters.forEach((charName, index) => {
           const a = document.createElement("a");
@@ -314,24 +345,18 @@
 
           const textSpan = document.createElement("span");
           textSpan.innerText = "⚔️ " + charName;
-          textSpan.style.cursor = "pointer";
-          textSpan.style.flexGrow = "1"; 
-          
-          textSpan.addEventListener("click", (e) => {
-              e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords(); 
-          });
+          textSpan.style.cursor = "pointer"; textSpan.style.flexGrow = "1"; 
+          textSpan.addEventListener("click", (e) => { e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords(); });
 
           const editBtn = document.createElement("span");
           editBtn.innerText = "⚙️"; editBtn.style.cursor = "pointer"; editBtn.style.fontSize = "0.9em"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
-
           editBtn.addEventListener("click", (e) => {
               e.preventDefault(); e.stopPropagation(); 
-              const action = prompt(`修改【${charName}】\n請輸入新名稱：\n(清空文字並確定可刪除)`, charName);
+              const action = prompt(`修改角色名稱：\n(若要刪除，請清空文字並按下確定)`, charName);
               if (action === null) return; 
-
               const newName = action.trim();
               if (newName === "") {
-                  if (confirm(`⚠️ 確定刪除【${charName}】？`)) {
+                  if (confirm(`確定要刪除角色【${charName}】嗎？`)) {
                       myCharacters.splice(index, 1); 
                       if (activeChar === charName) activeChar = myCharacters.length > 0 ? myCharacters[0] : "";
                       localStorage.setItem("ms_characters", JSON.stringify(myCharacters));
@@ -350,7 +375,7 @@
 
   document.getElementById("btn-add-char").addEventListener("click", (e) => {
       e.preventDefault();
-      const newChar = prompt("輸入新角色名稱 (例如：狂狼勇士)");
+      const newChar = prompt("請輸入新角色名稱：");
       if (newChar && newChar.trim() !== "") {
           myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); 
       }
@@ -358,43 +383,34 @@
 
 
   // ==========================================
-  // [模組 B] 讀取、篩選與渲染
+  // [模組 D] 讀取、篩選與渲染
   // ==========================================
   async function loadRecords() {
+      if(!currentUserUid) return;
       const tableBody = document.getElementById("table-body");
-      const statCrystal = document.getElementById("stat-crystal");
-      const statDrop = document.getElementById("stat-drop"); 
-      const statUnsettled = document.getElementById("stat-unsettled"); 
       
       try {
-          tableBody.innerHTML = '<tr><td colspan="5" class="text-muted">⏳ 正在同步雲端資料...</td></tr>';
+          tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">資料同步中...</td></tr>';
 
-          const q = query(collection(db, "DropRecords"), where("owner_character", "==", `${currentPlayer}_${activeChar}`));
+          const queryKey = `${currentUserUid}_${activeChar}`;
+          const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", queryKey));
           const querySnapshot = await getDocs(q);
           
           let html = "";
-          let totalCrystal = 0;
-          let totalDividend = 0; 
-          let pendingCount = 0;
-          let unsettledCount = 0; 
+          let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0; 
 
           let records = [];
           querySnapshot.forEach((doc) => { let data = doc.data(); data.id = doc.id; records.push(data); });
           records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-          // 💡 取得當前選擇的週次範圍
           const weekFilter = document.getElementById("filter-week").value;
           const boundaries = getWeekBoundaries();
 
-          // 💡 進行過濾
           let filteredRecords = records.filter(data => {
               const recordDate = new Date(data.date);
-              if (weekFilter === "this_week") {
-                  return recordDate >= boundaries.thisWeekStart;
-              } else if (weekFilter === "last_week") {
-                  return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
-              }
-              return true; // "all"
+              if (weekFilter === "this_week") return recordDate >= boundaries.thisWeekStart;
+              if (weekFilter === "last_week") return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
+              return true; 
           });
 
           filteredRecords.forEach((data) => {
@@ -408,8 +424,8 @@
               if (data.status === "無") statusBadge = `<span class="text-muted">--</span>`;
 
               let payoutBadge = "";
-              if (data.payout_status === "未結清") payoutBadge = `<div class="mt-1"><span class="badge bg-danger">🤝 未結清</span></div>`;
-              else if (data.payout_status === "已結清") payoutBadge = `<div class="mt-1"><span class="badge bg-success">🤝 已結清</span></div>`;
+              if (data.payout_status === "未結清") payoutBadge = ` <span class="badge bg-danger">未結清</span>`;
+              else if (data.payout_status === "已結清") payoutBadge = ` <span class="badge bg-success">已結清</span>`;
 
               let battleInfo = "";
               if (data.clear_time || data.lives_left) {
@@ -417,51 +433,43 @@
                   let lifeStr = data.lives_left ? `❤️ x${data.lives_left}` : "";
                   battleInfo = `<br><span class="badge-battle">${timeStr} ${lifeStr}</span>`;
               }
-              // 💡 顯示備註
-              if (data.memo) {
-                  battleInfo += `<span class="memo-text">📝 ${data.memo}</span>`;
-              }
+              if (data.memo) battleInfo += `<span class="memo-text">備註：${data.memo}</span>`;
 
               let incomeHtml = `<div class="crystal-text">💎 ${data.crystal_income_billion} 億</div>`;
-              if (data.my_dividend_billion > 0) {
-                  incomeHtml += `<div class="dividend-text" style="font-size:0.9em;">💰 +${data.my_dividend_billion} 億</div>`;
-              }
+              if (data.my_dividend_billion > 0) incomeHtml += `<div class="dividend-text" style="font-size:0.9em;">💰 +${data.my_dividend_billion} 億</div>`;
 
               html += `
                   <tr>
                       <td class="text-start ps-3">
-                          <div class="fw-bold">${data.boss_name}</div>
-                          <small class="text-muted">${data.date}</small>
+                          <div class="fw-bold">${data.boss_name} <small class="text-muted fw-normal">${data.date}</small></div>
                           ${battleInfo}
                       </td>
                       <td class="text-nowrap">${incomeHtml}</td>
-                      <td class="text-nowrap">${data.item_name}</td>
-                      <td>${statusBadge}${payoutBadge}</td> 
-                      <td><button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">🗑️</button></td>
+                      <td class="text-nowrap">${data.item_name}<br>${statusBadge}${payoutBadge}</td> 
+                      <td><button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button></td>
                   </tr>
               `;
           });
 
-          if (html === "") tableBody.innerHTML = '<tr><td colspan="5" class="text-muted">目前此範圍尚無紀錄</td></tr>';
+          if (html === "") tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>';
           else tableBody.innerHTML = html;
 
-          statCrystal.innerText = `${totalCrystal.toFixed(2)} 億`;
-          statDrop.innerText = `${totalDividend.toFixed(2)} 億`;
+          document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`;
+          document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
           document.getElementById("stat-pending").innerText = `${pendingCount} 件`;
-          statUnsettled.innerText = `${unsettledCount} 件`; 
+          document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`; 
 
       } catch (error) {
           console.error("讀取失敗：", error);
-          tableBody.innerHTML = '<tr><td colspan="5" class="text-danger">❌ 資料讀取失敗，請按 F12 檢查</td></tr>';
+          tableBody.innerHTML = '<tr><td colspan="4" class="text-danger">資料讀取失敗，請確認網路或登入狀態</td></tr>';
       }
   }
 
-  // 監聽下拉選單切換，重新渲染表格
   document.getElementById("filter-week").addEventListener("change", loadRecords);
 
 
   // ==========================================
-  // [模組 C] 存檔邏輯 
+  // [模組 E] 存檔邏輯
   // ==========================================
   const bossCrystalPrices = {
       "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235,
@@ -473,6 +481,8 @@
   const saveBtn = document.getElementById("btn-save");
 
   saveBtn.addEventListener("click", async () => {
+      if(!currentUserUid) { alert("操作失敗：請先登入系統。"); return; }
+      
       const boss = document.getElementById("input-boss").value;
       const teammatesStr = document.getElementById("input-teammates").value;
       const itemName = document.getElementById("input-item-name").value;
@@ -480,7 +490,7 @@
       
       const clearTime = document.getElementById("input-clear-time").value.trim();
       const livesLeft = document.getElementById("input-lives").value.trim();
-      const memo = document.getElementById("input-memo").value.trim(); // 💡 抓取備註
+      const memo = document.getElementById("input-memo").value.trim(); 
       const itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
       const payoutStatus = document.getElementById("input-payout-status").value; 
 
@@ -493,16 +503,16 @@
       const myDividend = itemTotalPrice > 0 ? (itemTotalPrice / totalPlayers).toFixed(2) : 0;
 
       const recordData = {
-          player_id: currentPlayer,
+          uid: currentUserUid,
+          uid_char_key: `${currentUserUid}_${activeChar}`,
           character_name: activeChar, 
-          owner_character: `${currentPlayer}_${activeChar}`, 
           boss_name: boss,
           teammates: teamArray,
           total_players: totalPlayers,
           crystal_income_billion: parseFloat(myCrystalIncome),
           clear_time: clearTime,
           lives_left: livesLeft,
-          memo: memo, // 💡 存入備註
+          memo: memo, 
           item_total_price_billion: itemTotalPrice,
           my_dividend_billion: parseFloat(myDividend),
           item_name: itemName || "無", 
@@ -512,37 +522,40 @@
       };
 
       try {
-          saveBtn.innerText = "⏳ 儲存中..."; saveBtn.disabled = true;
+          saveBtn.innerText = "處理中..."; saveBtn.disabled = true;
           await addDoc(collection(db, "DropRecords"), recordData);
           
-          let successMsg = `儲存成功！\n${boss} 結晶實收：${myCrystalIncome} 億`;
-          if (myDividend > 0) successMsg += `\n預計個人分紅：${myDividend} 億`;
+          let successMsg = `紀錄已儲存\n結晶收益：${myCrystalIncome} 億`;
+          if (myDividend > 0) successMsg += `\n預估分紅：${myDividend} 億`;
           alert(successMsg);
           
           loadRecords(); 
           document.getElementById("record-form").reset();
-          saveBtn.innerText = "💾 儲存紀錄"; saveBtn.disabled = false;
-      } catch (error) { alert("儲存失敗，請檢查 Console！"); saveBtn.innerText = "💾 儲存紀錄"; saveBtn.disabled = false; }
+          saveBtn.innerText = "儲存紀錄"; saveBtn.disabled = false;
+      } catch (error) { console.error(error); alert("儲存失敗，請檢查網路連線或權限設定。"); saveBtn.innerText = "儲存紀錄"; saveBtn.disabled = false; }
   });
 
-  // [模組 D] 刪除明細紀錄邏輯
+  // ==========================================
+  // [模組 F] 刪除紀錄邏輯
+  // ==========================================
   document.getElementById("table-body").addEventListener("click", async (e) => {
       const btn = e.target.closest(".btn-delete-record");
       if (!btn) return; 
       const docId = btn.getAttribute("data-id"); 
-      if (confirm("⚠️ 確定刪除這筆紀錄？")) {
-          try { await deleteDoc(doc(db, "DropRecords", docId)); loadRecords(); } catch (error) { alert("刪除失敗！"); }
+      if (confirm("確定要刪除這筆紀錄嗎？操作將無法復原。")) {
+          try { await deleteDoc(doc(db, "DropRecords", docId)); loadRecords(); } catch (error) { alert("刪除失敗，請確認權限狀態。"); }
       }
   });
 
-  // [模組 E] 產生 LINE 戰報 
+  // ==========================================
+  // [模組 G] 複製紀錄摘要
+  // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
-      const q = query(collection(db, "DropRecords"), where("owner_character", "==", `${currentPlayer}_${activeChar}`));
+      const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", `${currentUserUid}_${activeChar}`));
       getDocs(q).then((querySnapshot) => {
           let records = [];
           querySnapshot.forEach(doc => records.push(doc.data()));
           
-          // 💡 根據目前下拉選單範圍產出報表
           const weekFilter = document.getElementById("filter-week").value;
           const boundaries = getWeekBoundaries();
           let filteredRecords = records.filter(data => {
@@ -552,10 +565,10 @@
               return true; 
           });
 
-          if(filteredRecords.length === 0){ alert("目前範圍無紀錄可產生戰報！"); return; }
+          if(filteredRecords.length === 0){ alert("目前範圍無資料可供匯出。"); return; }
 
           let titleWeek = weekFilter === "this_week" ? "【本週】" : weekFilter === "last_week" ? "【上週】" : "【近期】";
-          let report = `🍁 ${activeChar} ${titleWeek}戰報 🍁\n------------------------\n`;
+          let report = `📊 ${activeChar} ${titleWeek}討伐報表 📊\n------------------------\n`;
           let totalCrys = 0, totalDiv = 0;
           let drops = [];
 
@@ -571,25 +584,27 @@
               }
 
               if (d.item_name !== "無" && d.item_name !== "") {
-                  let payoutNote = d.payout_status === "未結清" ? " [待分帳]" : "";
-                  drops.push(`${d.boss_name} 掉落 [${d.item_name}]${payoutNote}`);
+                  let payoutNote = d.payout_status === "未結清" ? " [待結算]" : "";
+                  drops.push(`${d.boss_name} 取得 [${d.item_name}]${payoutNote}`);
               }
-              report += `⚔️ ${d.boss_name}${battleNote}\n   結：${d.crystal_income_billion}億`;
-              if(d.my_dividend_billion > 0) report += ` ｜ 分：+${d.my_dividend_billion}億`;
-              if(d.memo) report += `\n   📝備註：${d.memo}`;
+              report += `⚔️ ${d.boss_name}${battleNote}\n   結晶：${d.crystal_income_billion}億`;
+              if(d.my_dividend_billion > 0) report += ` ｜ 分紅：+${d.my_dividend_billion}億`;
+              if(d.memo) report += `\n   備註：${d.memo}`;
               report += `\n`;
           });
 
-          report += `------------------------\n💰 預計總收入：${(totalCrys + totalDiv).toFixed(2)} 億\n`;
-          if (drops.length > 0) report += `✨ 稀有掉落：\n - ${drops.join("\n - ")}\n`;
+          report += `------------------------\n💰 期間總收益：${(totalCrys + totalDiv).toFixed(2)} 億\n`;
+          if (drops.length > 0) report += `✨ 物品紀錄：\n - ${drops.join("\n - ")}\n`;
 
-          navigator.clipboard.writeText(report).then(() => alert("✅ 戰報已複製！\n\n" + report));
+          navigator.clipboard.writeText(report).then(() => alert("✅ 報表已複製至剪貼簿！\n\n預覽：\n" + report));
       });
   });
 
-  // [模組 F] 匯出 CSV 
+  // ==========================================
+  // [模組 H] 匯出 CSV 
+  // ==========================================
   document.getElementById("btn-export-csv").addEventListener("click", () => {
-      const q = query(collection(db, "DropRecords"), where("owner_character", "==", `${currentPlayer}_${activeChar}`));
+      const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", `${currentUserUid}_${activeChar}`));
       getDocs(q).then((querySnapshot) => {
           let records = [];
           querySnapshot.forEach(doc => records.push(doc.data()));
@@ -603,25 +618,24 @@
               return true; 
           });
 
-          if(filteredRecords.length === 0){ alert("目前範圍無紀錄可匯出！"); return; }
+          if(filteredRecords.length === 0){ alert("目前範圍無資料可供匯出。"); return; }
           filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-          let csv = "\ufeff日期,Boss名稱,通關時間,剩餘命數,結晶實收(億),掉落物,售出總價,個人分紅(億),物品狀態,分帳狀態,同行隊友,備註\n";
+          let csv = "\ufeff日期,目標名稱,通關時間,剩餘命數,結晶收益(億),取得物品,售出總價,分紅收益(億),物品狀態,帳款狀態,同行隊友,備註\n";
           filteredRecords.forEach((d) => {
               let teamStr = d.teammates && d.teammates.length > 0 ? `"${d.teammates.join("、")}"` : "無";
               let itemStr = d.item_name !== "無" && d.item_name !== "" ? `"${d.item_name}"` : "無";
-              let memoStr = d.memo ? `"${d.memo.replace(/"/g, '""')}"` : ""; // 處理 CSV 內的換行跟引號
+              let memoStr = d.memo ? `"${d.memo.replace(/"/g, '""')}"` : ""; 
               csv += `${d.date},${d.boss_name},${d.clear_time||""},${d.lives_left||""},${d.crystal_income_billion},${itemStr},${d.item_total_price_billion||0},${d.my_dividend_billion||0},${d.status},${d.payout_status||"無需分帳"},${teamStr},${memoStr}\n`;
           });
 
           const link = document.createElement("a");
           link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-          link.download = `${activeChar}_打寶收益紀錄.csv`;
+          link.download = `${activeChar}_收益紀錄.csv`;
           document.body.appendChild(link); link.click(); document.body.removeChild(link);
       });
   });
 
-  renderSidebar(); loadRecords(); 
 </script>
 </body>
 </html>
