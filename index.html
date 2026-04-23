@@ -49,8 +49,10 @@
             #character-list { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 2px solid #1a252f; }
             #character-list::-webkit-scrollbar { display: none; }
             .char-item { flex-shrink: 0; min-width: 140px; border-left: none !important; border-bottom: 4px solid transparent; padding: 10px 15px; }
+            .char-item.active { border-bottom: 4px solid #3498db !important; background-color: #2c3e50; }
             .sidebar-bottom-actions { display: flex; }
             .sidebar-bottom-actions a { flex: 1; text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px;}
+            .stat-card-wrapper { margin-bottom: 15px; }
         }
     </style>
 </head>
@@ -60,7 +62,7 @@
     <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
     <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
     <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill">
-        使用 Google 帳號登入
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" class="me-2" alt="Google"> 使用 Google 帳號登入
     </button>
 </div>
 
@@ -292,7 +294,8 @@
                     </div>
                 </div>
 
-            </div> </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -355,7 +358,8 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-  import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+  // 💡 已經恢復使用穩定版的 signInWithPopup 
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
@@ -390,7 +394,8 @@
   const defaultItemOptions = [
       { group: "漆黑飾品", value: "口紅控制機", text: "口紅控制機" }, { group: "漆黑飾品", value: "附有魔力的眼罩", text: "附有魔力的眼罩" }, { group: "漆黑飾品", value: "巨大恐怖", text: "巨大恐怖" }, { group: "漆黑飾品", value: "苦痛的根源", text: "苦痛的根源" }, { group: "漆黑飾品", value: "創世徽章", text: "創世徽章" }, { group: "漆黑飾品", value: "破滅的標記", text: "破滅的標記" }, { group: "漆黑飾品", value: "夢幻的皮帶", text: "夢幻的皮帶" }, { group: "漆黑飾品", value: "指揮官力量耳環", text: "指揮官力量耳環" }, { group: "漆黑飾品", value: "黑之心", text: "黑之心" },
       { group: "黎明飾品", value: "黎明守護天使戒指", text: "黎明守護天使戒指" }, { group: "黎明飾品", value: "破曉墜飾", text: "破曉墜飾" }, { group: "黎明飾品", value: "暮光印記", text: "暮光印記" }, { group: "黎明飾品", value: "星耀耳環", text: "星耀耳環" },
-      { group: "其他", value: "戒指箱子 (Lv.4)", text: "戒指箱子 (Lv.4)" }, { group: "其他", value: "戒指箱子 (Lv.3)", text: "戒指箱子 (Lv.3)" }, { group: "其他", value: "靈魂寶珠", text: "靈魂寶珠" }
+      { group: "其他", value: "戒指箱子 (Lv.4)", text: "戒指箱子 (Lv.4)" }, { group: "其他", value: "戒指箱子 (Lv.3)", text: "戒指箱子 (Lv.3)" }, { group: "其他", value: "靈魂寶珠", text: "靈魂寶珠" },
+      { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
   function getCustomItems() { return JSON.parse(localStorage.getItem("ms_custom_items")) || []; }
@@ -442,7 +447,7 @@
   });
 
   // ==========================================
-  // [初始化與登入]
+  // [初始化與登入 (改回穩定的 signInWithPopup)]
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -455,9 +460,7 @@
               document.getElementById("input-boss-routine").innerHTML = optionsHtml;
               document.getElementById("input-boss-loot").innerHTML = optionsHtml;
               
-              // Routine 是多選
               bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)..." });
-              // Loot 是單選
               bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標..." });
           }
           initItemSelect(); renderCustomItemList(); 
@@ -470,7 +473,14 @@
       }
   });
 
-  document.getElementById("btn-login").addEventListener("click", () => signInWithRedirect(auth, provider));
+  // 💡 改回 signInWithPopup，完美解決跳轉後被踢出的問題
+  document.getElementById("btn-login").addEventListener("click", () => {
+      signInWithPopup(auth, provider).catch(error => {
+          console.error("登入失敗:", error);
+          alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。");
+      });
+  });
+
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
   // ==========================================
@@ -504,7 +514,7 @@
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
       let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
       if (savedData.weekStart !== thisWeekStart) { savedData = { weekStart: thisWeekStart, tasks: {} }; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }
-      ["地下水道", "公會城 / 跑旗", "每週任務", "武陵道場"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到 / 跳棋任務", "每週任務", "武陵道場"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -567,32 +577,25 @@
               let data = doc.data(); data.id = doc.id; 
               records.push(data); 
 
-              // 🌐 全帳號統計
               if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion;
               if (data.item_name && data.item_name !== "無" && data.payout_status === "未結清" && data.my_dividend_billion > 0) accountUnsettledCount += data.my_dividend_billion;
-              
-              // 📊 當前角色 12隻進度
               if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
           });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
           
-          // 更新頂部儀表板
           document.getElementById("account-total-crystal").innerText = accountWeeklyCrystal.toFixed(2) + " 億";
           document.getElementById("account-total-unsettled").innerText = accountUnsettledCount.toFixed(2) + " 億";
           document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
           document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
           
           renderHeatmap(records);
-
-          // 拆分資料給兩個 Table
           renderRoutineTable(boundaries);
           renderLootTable();
 
       } catch (error) { console.error(error); }
   }
 
-  // 渲染表一：常規表 (顯示該角色所有紀錄，受時間過濾)
   function renderRoutineTable(boundaries) {
       const tableBody = document.getElementById("table-body-routine");
       const weekFilter = document.getElementById("filter-week-routine").value;
@@ -629,14 +632,10 @@
   }
   document.getElementById("filter-week-routine").addEventListener("change", () => renderRoutineTable(getWeekBoundaries()));
 
-  // 渲染表二：寶物表 (無視時間，置頂未結案，顯示所有寶物)
   function renderLootTable() {
       const tableBody = document.getElementById("table-body-loot");
-      
-      // 濾出所有有掉寶的紀錄 (不限角色，或只看當前角色？實戰中通常看當前角色)
       let lootRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無");
       
-      // 排序：未結案的放前面，日期新的放前面
       lootRecords.sort((a, b) => {
           let aPending = (a.status === "待售出" || a.payout_status === "未結清") ? 1 : 0;
           let bPending = (b.status === "待售出" || b.payout_status === "未結清") ? 1 : 0;
@@ -671,7 +670,6 @@
       });
       tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">目前寶物庫空空如也</td></tr>';
   }
-
 
   // ==========================================
   // [儲存邏輯 1：常規打卡]
@@ -763,11 +761,9 @@
   // [編輯與刪除]
   // ==========================================
   document.addEventListener("click", async (e) => {
-      // 刪除共用
       const btnDel = e.target.closest(".btn-delete-record");
       if (btnDel && confirm("確定刪除此紀錄？")) { await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); loadRecords(); return; }
 
-      // 編輯
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
           const docId = btnEdit.getAttribute("data-id"); const type = btnEdit.getAttribute("data-type");
@@ -775,7 +771,6 @@
           if (!d) return;
 
           if (type === "routine") {
-              // 切換到常規 Tab
               new bootstrap.Tab(document.getElementById('routine-tab')).show();
               document.getElementById("edit-doc-id-routine").value = docId;
               document.getElementById("input-date-routine").value = d.date;
@@ -786,7 +781,6 @@
               
               document.getElementById("form-title-routine").innerText = "✏️ 編輯常規紀錄"; saveBtnRoutine.innerText = "💾 更新紀錄"; saveBtnRoutine.classList.replace("btn-dark", "btn-primary"); cancelEditRoutineBtn.classList.remove("d-none");
           } else {
-              // 切換到掉寶 Tab
               new bootstrap.Tab(document.getElementById('loot-tab')).show();
               document.getElementById("edit-doc-id-loot").value = docId;
               document.getElementById("input-date-loot").value = d.date;
