@@ -13,8 +13,13 @@
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid #2c3e50; transition: 0.2s; cursor: pointer;}
         .sidebar a:hover, .sidebar a.active { background-color: #2c3e50; color: #3498db; border-left: 4px solid #3498db; }
         .card-custom { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .status-pending { background-color: #ffeeba; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 0.85em; }
-        .status-sold { background-color: #d4edda; color: #155724; padding: 5px 10px; border-radius: 6px; font-size: 0.85em; }
+        
+        .status-badge { padding: 5px 10px; border-radius: 6px; font-size: 0.85em; font-weight: bold; }
+        .bg-pending { background-color: #ffeeba; color: #856404; }
+        .bg-sold { background-color: #d4edda; color: #155724; }
+        .bg-unsettled { background-color: #f8d7da; color: #721c24; }
+        .bg-settled { background-color: #d1ecf1; color: #0c5460; }
+        
         .crystal-text { color: #2980b9; font-weight: bold; }
         .dividend-text { color: #27ae60; font-weight: bold; }
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
@@ -31,10 +36,12 @@
         .hc-2 { background-color: #006d32; }
         .hc-3 { background-color: #26a641; }
         .hc-4 { background-color: #39d353; }
-        .heatmap-legend { display: flex; align-items: center; justify-content: flex-end; font-size: 0.75rem; color: #bdc3c7; gap: 4px; margin-top: 8px; }
         
         .task-checkbox-label { color: #bdc3c7; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
         .form-check-input:checked + .task-checkbox-label { color: #3498db; text-decoration: line-through; opacity: 0.7; }
+        
+        .nav-tabs .nav-link { color: #6c757d; font-weight: bold; border: none; border-bottom: 3px solid transparent; }
+        .nav-tabs .nav-link.active { color: #2c3e50; background: none; border-bottom: 3px solid #3498db; }
 
         @media (max-width: 768px) {
             .sidebar { min-height: auto; position: sticky; top: 0; z-index: 1000; padding-top: 10px !important; padding-bottom: 0 !important; }
@@ -42,10 +49,8 @@
             #character-list { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 2px solid #1a252f; }
             #character-list::-webkit-scrollbar { display: none; }
             .char-item { flex-shrink: 0; min-width: 140px; border-left: none !important; border-bottom: 4px solid transparent; padding: 10px 15px; }
-            .char-item.active { border-bottom: 4px solid #3498db !important; background-color: #2c3e50; }
             .sidebar-bottom-actions { display: flex; }
             .sidebar-bottom-actions a { flex: 1; text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px;}
-            .stat-card-wrapper { margin-bottom: 15px; }
         }
     </style>
 </head>
@@ -55,7 +60,7 @@
     <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
     <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
     <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" class="me-2" alt="Google"> 使用 Google 帳號登入
+        使用 Google 帳號登入
     </button>
 </div>
 
@@ -73,231 +78,256 @@
             <div class="sidebar-module mt-2">
                 <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">🔥 討伐活躍度 (近16週)</h6>
                 <div class="heatmap-grid" id="heatmap-grid"></div>
-                <div class="heatmap-legend">
-                    少 <div class="heatmap-cell hc-0"></div><div class="heatmap-cell hc-1"></div><div class="heatmap-cell hc-2"></div><div class="heatmap-cell hc-3"></div><div class="heatmap-cell hc-4"></div> 多
-                </div>
             </div>
 
             <div class="sidebar-bottom-actions mt-auto d-flex flex-column">
                 <a id="btn-add-char" class="text-warning">➕ 新增角色</a>
-                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="text-info">⚙️ 系統與物品設定</a>
+                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="text-info">⚙️ 設定自訂物品</a>
                 <a id="btn-logout" class="text-danger mb-3">🚪 登出 (<span id="user-name"></span>)</a>
             </div>
         </div>
 
         <div class="col-md-10 p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                <h2 class="mb-0 fw-bold" id="dashboard-title">收益與討伐紀錄</h2>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
-                        📊 本週角色進度：<span id="weekly-limit-count">0</span> / 12 隻
-                    </span>
-                    <span class="badge bg-secondary text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
-                        🔄 週王重置：<span id="reset-timer-week">計算中...</span>
-                    </span>
-                    <span class="badge bg-dark text-white fs-6 px-3 py-2 shadow-sm rounded-pill">
-                        🌑 黑魔重置：<span id="reset-timer-month">計算中...</span>
-                    </span>
-                </div>
-            </div>
-
-            <div class="row mb-4">
-                <div class="col-6 col-md-3 stat-card-wrapper">
-                    <div class="card card-custom p-3 bg-white border-start border-primary border-4">
-                        <h6 class="text-muted">💎 結晶石總計</h6>
-                        <h3 class="crystal-text" id="stat-crystal">0 億</h3>
+            
+            <div class="card card-custom bg-white p-3 mb-3 shadow-sm border-0 border-start border-5 border-dark">
+                <div class="row align-items-center">
+                    <div class="col-md-4 mb-2 mb-md-0">
+                        <h5 class="fw-bold mb-1">🌐 帳號總覽 <span class="text-muted fs-6">Account Overview</span></h5>
+                        <div class="d-flex gap-2 mt-2">
+                            <span class="badge bg-secondary">週王重置：<span id="reset-timer-week"></span></span>
+                            <span class="badge bg-dark">黑魔重置：<span id="reset-timer-month"></span></span>
+                        </div>
                     </div>
-                </div>
-                <div class="col-6 col-md-3 stat-card-wrapper">
-                    <div class="card card-custom p-3 bg-white border-start border-success border-4">
-                        <h6 class="text-muted">✨ 分紅收益總計</h6>
-                        <h3 class="dividend-text" id="stat-drop">0 億</h3>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.85rem;">本週全帳號總結晶</div>
+                        <h4 class="crystal-text mb-0" id="account-total-crystal">0 億</h4>
                     </div>
-                </div>
-                <div class="col-6 col-md-3 stat-card-wrapper">
-                    <div class="card card-custom p-3 bg-white border-start border-warning border-4">
-                        <h6 class="text-muted">⏳ 待售出物品</h6>
-                        <h3 class="text-warning" id="stat-pending">0 件</h3>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3 stat-card-wrapper">
-                    <div class="card card-custom p-3 bg-white border-start border-danger border-4">
-                        <h6 class="text-muted">🤝 待結算帳款</h6>
-                        <h3 class="text-danger" id="stat-unsettled">0 筆</h3>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.85rem;">全帳號未結清分紅 (累計)</div>
+                        <h4 class="text-danger mb-0 fw-bold" id="account-total-unsettled">0 億</h4>
                     </div>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-12 col-lg-4 mb-4">
-                    <div class="card card-custom p-4 border-top border-dark border-4">
-                        <h5 class="mb-4" id="form-title">新增討伐紀錄</h5>
-                        <input type="hidden" id="edit-doc-id" value="">
-                        
-                        <form id="record-form">
-                            <div class="row mb-3">
-                                <div class="col-12 col-md-5 mb-3 mb-md-0">
-                                    <label class="form-label">討伐日期</label>
-                                    <input type="date" class="form-control" id="input-date">
-                                </div>
-                                <div class="col-12 col-md-7">
-                                    <div class="d-flex justify-content-between align-items-end mb-1">
-                                        <label class="form-label mb-0">討伐目標 <small class="text-muted">(可多選)</small></label>
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+                <h3 class="mb-0 fw-bold"><span id="dashboard-title">角色名稱</span> <span class="fs-5 text-muted">收益管理</span></h3>
+                <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
+                    📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
+                </span>
+            </div>
+
+            <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="routine-tab" data-bs-toggle="tab" data-bs-target="#routine-pane" type="button" role="tab">⚔️ 常規討伐 (結晶打卡)</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="loot-tab" data-bs-toggle="tab" data-bs-target="#loot-pane" type="button" role="tab">💎 寶物庫與帳務</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="myTabContent">
+                
+                <div class="tab-pane fade show active" id="routine-pane" role="tabpanel" tabindex="0">
+                    <div class="row">
+                        <div class="col-12 col-lg-4 mb-4">
+                            <div class="card card-custom p-4 border-top border-primary border-4">
+                                <h5 class="mb-4" id="form-title-routine">新增常規討伐 (無掉寶)</h5>
+                                <input type="hidden" id="edit-doc-id-routine" value="">
+                                
+                                <form id="form-routine">
+                                    <div class="mb-3">
+                                        <label class="form-label">討伐日期</label>
+                                        <input type="date" class="form-control" id="input-date-routine">
                                     </div>
-                                    <select id="input-boss" multiple placeholder="選擇目標..."></select>
-                                </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-end mb-1">
+                                            <label class="form-label mb-0">討伐目標 <small class="text-muted">(可多選)</small></label>
+                                            <a href="#" id="btn-save-routine-preset" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 設為常規</a>
+                                        </div>
+                                        <select id="input-boss-routine" multiple placeholder="選擇目標..."></select>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-12 col-md-5 mb-3 mb-md-0">
+                                            <label class="form-label text-primary fw-bold">討伐人數</label>
+                                            <select class="form-select border-primary" id="input-party-size-routine">
+                                                <option value="1">1 人</option><option value="2">2 人</option><option value="3">3 人</option>
+                                                <option value="4">4 人</option><option value="5">5 人</option><option value="6">6 人</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-7">
+                                            <label class="form-label">隊友名稱 <small class="text-muted">(選填)</small></label>
+                                            <input type="text" class="form-control" id="input-teammates-routine" placeholder="空格或逗號隔開">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">備註 <small class="text-muted">(選填)</small></label>
+                                        <input type="text" class="form-control" id="input-memo-routine" placeholder="通關時間或戰況">
+                                    </div>
+                                    <div class="d-flex gap-2 mt-4">
+                                        <button type="button" class="btn btn-primary w-100 py-2 fs-5" id="btn-save-routine">💾 儲存紀錄</button>
+                                        <button type="button" class="btn btn-outline-secondary py-2 d-none" id="btn-cancel-edit-routine">取消</button>
+                                    </div>
+                                </form>
                             </div>
-                            
-                            <div class="d-flex justify-content-end mb-3">
-                                <a href="#" id="btn-save-routine" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 設為常規清單</a>
-                            </div>
+                        </div>
 
-                            <div class="d-none" id="hidden-boss-options">
-                                <optgroup label="Extreme / Ultimate (終極/極限)">
-                                    <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
-                                    <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
-                                    <option value="終極咖凌">終極咖凌 [極咖] (14.43億)</option>
-                                    <option value="終極最初的敵對者">終極最初的敵對者 (13.44億)</option>
-                                    <option value="終極監視者卡洛斯">終極監視者卡洛斯 [極狗] (12.37億)</option>
-                                    <option value="終極受選的賽蓮">終極受選的賽蓮 [極賽] (7.24億)</option>
-                                    <option value="終極史烏">終極史烏 [極史] (3.24億)</option>
-                                </optgroup>
-                                <optgroup label="Hard / Chaos (困難/混沌)">
-                                    <option value="困難黑魔法師">困難黑魔法師 [困黑] (9.91億)</option>
-                                    <option value="困難巴德利斯">困難巴德利斯 (8.4億)</option>
-                                    <option value="困難林波">困難林波 [困林波] (7.49億)</option>
-                                    <option value="困難咖凌">困難咖凌 [困咖] (7.21億)</option>
-                                    <option value="困難最初的敵對者">困難最初的敵對者 [困敵對者] (6.82億)</option>
-                                    <option value="混沌監視者卡洛斯">混沌監視者卡洛斯 [困狗] (6.19億)</option>
-                                    <option value="困難受選的賽蓮">困難受選的賽蓮 [困賽] (2.72億)</option>
-                                    <option value="困難真希拉">困難真希拉 [困真] (1.45億)</option>
-                                    <option value="困難威爾">困難威爾 [困威] (1.27億)</option>
-                                    <option value="混沌守護天使綠水靈">混沌守護天使綠水靈 [困綠] (1.26億)</option>
-                                    <option value="困難頓凱爾">困難頓凱爾 [困頓] (1.26億)</option>
-                                    <option value="混沌戴斯克">混沌戴斯克 [困眼] (1.11億)</option>
-                                    <option value="困難露希妲">困難露希妲 [困露] (1.02億)</option>
-                                    <option value="困難史烏">困難史烏 [困史] (0.92億)</option>
-                                    <option value="困難戴米安">困難戴米安 [困戴] (0.86億)</option>
-                                </optgroup>
-                                <optgroup label="Normal (普通)">
-                                    <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
-                                    <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.5億)</option>
-                                    <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.5億)</option>
-                                </optgroup>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-12 col-md-5 mb-3 mb-md-0">
-                                    <label class="form-label text-primary fw-bold">討伐人數</label>
-                                    <select class="form-select border-primary" id="input-party-size">
-                                        <option value="1">1 人 (單吃)</option>
-                                        <option value="2">2 人平分</option>
-                                        <option value="3">3 人平分</option>
-                                        <option value="4">4 人平分</option>
-                                        <option value="5">5 人平分</option>
-                                        <option value="6">6 人平分</option>
+                        <div class="col-12 col-lg-8">
+                            <div class="card card-custom p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">📜 討伐紀錄總表</h5>
+                                    <select class="form-select form-select-sm w-auto" id="filter-week-routine">
+                                        <option value="this_week">本週</option>
+                                        <option value="last_week">上週</option>
+                                        <option value="all">全部</option>
                                     </select>
                                 </div>
-                                <div class="col-12 col-md-7">
-                                    <label class="form-label">隊友名稱 <small class="text-muted">(選填)</small></label>
-                                    <input type="text" class="form-control" id="input-teammates" placeholder="可用空格或逗號隔開">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle text-center">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>日期與目標</th>
+                                                <th>💎 結晶分配</th>
+                                                <th>📦 掉落物</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-body-routine"></tbody>
+                                    </table>
                                 </div>
                             </div>
-
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label">通關時間 <small class="text-muted">(選填)</small></label>
-                                    <input type="text" class="form-control" id="input-clear-time" placeholder="例: 12:30">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">剩餘命數 <small class="text-muted">(選填)</small></label>
-                                    <input type="number" class="form-control" id="input-lives" placeholder="例: 5" min="0" max="10">
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">紀錄備註 <small class="text-muted">(選填)</small></label>
-                                <textarea class="form-control" id="input-memo" rows="2" placeholder="機制失誤、特定戰術分配等"></textarea>
-                            </div>
-                            <hr>
-
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="has-drop-check" style="cursor: pointer;">
-                                <label class="form-check-label fw-bold text-primary" for="has-drop-check" style="cursor: pointer;">👑 登記掉落特殊物品 (飾品/箱子等)</label>
-                            </div>
-
-                            <div id="drop-fields-container" class="d-none bg-light p-3 rounded border">
-                                <div class="mb-3">
-                                    <label class="form-label text-primary">選擇掉落物品</label>
-                                    <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
-                                </div>
-
-                                <div class="row mb-2">
-                                    <div class="col-12 col-md-4 mb-2 mb-md-0">
-                                        <label class="form-label">物品狀態</label>
-                                        <select class="form-select" id="input-status">
-                                            <option value="待售出">待售出</option>
-                                            <option value="已售出">已售出</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <label class="form-label">總售價 <small class="text-muted">(億)</small></label>
-                                        <input type="number" class="form-control" id="input-item-price" placeholder="例: 150" step="0.1" min="0">
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <label class="form-label">分帳狀態</label>
-                                        <select class="form-select" id="input-payout-status">
-                                            <option value="未結清">未結清</option>
-                                            <option value="已結清">已結清</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="d-flex gap-2 mt-4">
-                                <button type="button" class="btn btn-dark w-100 py-2 fs-5" id="btn-save">💾 儲存紀錄</button>
-                                <button type="button" class="btn btn-outline-secondary py-2 d-none" id="btn-cancel-edit">取消</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="col-12 col-lg-8">
-                    <div class="card card-custom p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                            <div class="d-flex align-items-center mb-2 mb-md-0">
-                                <h5 class="mb-0 me-3">詳細收益明細表</h5>
-                                <select class="form-select form-select-sm w-auto border-secondary" id="filter-week">
-                                    <option value="all">顯示全部紀錄</option>
-                                    <option value="this_week">僅顯示本週</option>
-                                    <option value="last_week">僅顯示上週</option>
-                                </select>
-                            </div>
-                            <div>
-                                <button id="btn-copy-line" class="btn btn-sm btn-outline-primary me-2">📋 複製紀錄摘要</button>
-                                <button id="btn-export-csv" class="btn btn-sm btn-outline-secondary">📥 匯出 CSV</button>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle text-center">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>目標與戰況</th>
-                                        <th>💎 收益分配</th>
-                                        <th>📦 物品與狀態</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-body">
-                                    <tr><td colspan="4" class="text-muted">目前尚無紀錄</td></tr>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <div class="tab-pane fade" id="loot-pane" role="tabpanel" tabindex="0">
+                    <div class="row">
+                        <div class="col-12 col-lg-4 mb-4">
+                            <div class="card card-custom p-4 border-top border-warning border-4 bg-light">
+                                <h5 class="mb-4" id="form-title-loot">新增掉寶紀錄</h5>
+                                <input type="hidden" id="edit-doc-id-loot" value="">
+                                
+                                <form id="form-loot">
+                                    <div class="row mb-3">
+                                        <div class="col-12 col-md-5 mb-3 mb-md-0">
+                                            <label class="form-label">討伐日期</label>
+                                            <input type="date" class="form-control" id="input-date-loot">
+                                        </div>
+                                        <div class="col-12 col-md-7">
+                                            <label class="form-label">討伐目標 <small class="text-danger">(單選)</small></label>
+                                            <select id="input-boss-loot" placeholder="選擇一隻目標..."></select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label text-warning fw-bold">選擇掉落物品</label>
+                                        <select id="input-item-name" placeholder="選擇或輸入物品..."></select>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-12 col-md-5 mb-3 mb-md-0">
+                                            <label class="form-label">討伐人數</label>
+                                            <select class="form-select" id="input-party-size-loot">
+                                                <option value="1">1 人</option><option value="2">2 人</option><option value="3">3 人</option>
+                                                <option value="4">4 人</option><option value="5">5 人</option><option value="6">6 人</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-7">
+                                            <label class="form-label">隊友名稱</label>
+                                            <input type="text" class="form-control" id="input-teammates-loot" placeholder="紀錄參與分錢的人">
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-12 col-md-4 mb-2 mb-md-0">
+                                            <label class="form-label">物品狀態</label>
+                                            <select class="form-select" id="input-status">
+                                                <option value="待售出">待售出</option>
+                                                <option value="已售出">已售出</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="form-label">總售價 <small>(億)</small></label>
+                                            <input type="number" class="form-control" id="input-item-price" placeholder="例: 150" step="0.1" min="0">
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="form-label">分帳狀態</label>
+                                            <select class="form-select" id="input-payout-status">
+                                                <option value="未結清">未結清</option>
+                                                <option value="已結清">已結清</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-4">
+                                        <button type="button" class="btn btn-warning text-dark fw-bold w-100 py-2 fs-5" id="btn-save-loot">💾 儲存掉寶</button>
+                                        <button type="button" class="btn btn-outline-secondary py-2 d-none" id="btn-cancel-edit-loot">取消</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-8">
+                            <div class="card card-custom p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">📦 寶物庫與帳務進度</h5>
+                                    <div>
+                                        <button id="btn-copy-line" class="btn btn-sm btn-outline-primary me-2">📋 複製對帳單</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle text-center">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>物品與目標</th>
+                                                <th>總售價 / 個人分紅</th>
+                                                <th>狀態追蹤</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-body-loot"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> </div>
     </div>
+</div>
+
+<div class="d-none" id="hidden-boss-options">
+    <optgroup label="Extreme / Ultimate (終極/極限)">
+        <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
+        <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
+        <option value="終極咖凌">終極咖凌 [極咖] (14.43億)</option>
+        <option value="終極最初的敵對者">終極最初的敵對者 (13.44億)</option>
+        <option value="終極監視者卡洛斯">終極監視者卡洛斯 [極狗] (12.37億)</option>
+        <option value="終極受選的賽蓮">終極受選的賽蓮 [極賽] (7.24億)</option>
+        <option value="終極史烏">終極史烏 [極史] (3.24億)</option>
+    </optgroup>
+    <optgroup label="Hard / Chaos (困難/混沌)">
+        <option value="困難黑魔法師">困難黑魔法師 [困黑] (9.91億)</option>
+        <option value="困難巴德利斯">困難巴德利斯 (8.4億)</option>
+        <option value="困難林波">困難林波 [困林波] (7.49億)</option>
+        <option value="困難咖凌">困難咖凌 [困咖] (7.21億)</option>
+        <option value="困難最初的敵對者">困難最初的敵對者 [困敵對者] (6.82億)</option>
+        <option value="混沌監視者卡洛斯">混沌監視者卡洛斯 [困狗] (6.19億)</option>
+        <option value="困難受選的賽蓮">困難受選的賽蓮 [困賽] (2.72億)</option>
+        <option value="困難真希拉">困難真希拉 [困真] (1.45億)</option>
+        <option value="困難威爾">困難威爾 [困威] (1.27億)</option>
+        <option value="混沌守護天使綠水靈">混沌守護天使綠水靈 [困綠] (1.26億)</option>
+        <option value="困難頓凱爾">困難頓凱爾 [困頓] (1.26億)</option>
+        <option value="混沌戴斯克">混沌戴斯克 [困眼] (1.11億)</option>
+        <option value="困難露希妲">困難露希妲 [困露] (1.02億)</option>
+        <option value="困難史烏">困難史烏 [困史] (0.92億)</option>
+        <option value="困難戴米安">困難戴米安 [困戴] (0.86億)</option>
+    </optgroup>
+    <optgroup label="Normal (普通)">
+        <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
+        <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.5億)</option>
+        <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.5億)</option>
+    </optgroup>
 </div>
 
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
@@ -309,10 +339,9 @@
       </div>
       <div class="modal-body">
         <h6 class="fw-bold mb-3">📦 管理自訂追蹤物品</h6>
-        <p class="text-muted" style="font-size: 0.85rem;">這裡新增的物品會保存在您的瀏覽器中，方便您快速選取。</p>
         <div class="input-group mb-3">
           <input type="text" id="input-custom-item" class="form-control" placeholder="輸入物品名稱">
-          <button class="btn btn-primary" id="btn-add-custom-item">加入清單</button>
+          <button class="btn btn-primary" id="btn-add-custom-item">加入</button>
         </div>
         <ul class="list-group" id="custom-item-list"></ul>
       </div>
@@ -344,8 +373,7 @@
   const provider = new GoogleAuthProvider();
   
   let currentUserUid = null; 
-  let currentUserName = "";
-  let bossSelect, itemSelect; 
+  let bossSelectRoutine, bossSelectLoot, itemSelect; 
 
   const loginScreen = document.getElementById("login-screen");
   const mainApp = document.getElementById("main-app");
@@ -355,41 +383,17 @@
   let currentRecordsData = [];
 
   // ==========================================
-  // [UI 互動] 掉寶開關
+  // [系統配置] 價格與物品
   // ==========================================
-  const dropCheck = document.getElementById("has-drop-check");
-  const dropContainer = document.getElementById("drop-fields-container");
-  dropCheck.addEventListener("change", (e) => {
-      if(e.target.checked) dropContainer.classList.remove("d-none");
-      else dropContainer.classList.add("d-none");
-  });
+  const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
   
-  // ==========================================
-  // [模組 0] 自訂掉寶管理
-  // ==========================================
   const defaultItemOptions = [
-      { group: "漆黑的 Boss 飾品", value: "口紅控制機", text: "口紅控制機" },
-      { group: "漆黑的 Boss 飾品", value: "附有魔力的眼罩", text: "附有魔力的眼罩" },
-      { group: "漆黑的 Boss 飾品", value: "巨大恐怖", text: "巨大恐怖" },
-      { group: "漆黑的 Boss 飾品", value: "苦痛的根源", text: "苦痛的根源" },
-      { group: "漆黑的 Boss 飾品", value: "創世徽章", text: "創世徽章" },
-      { group: "漆黑的 Boss 飾品", value: "破滅的標記", text: "破滅的標記" },
-      { group: "漆黑的 Boss 飾品", value: "夢幻的皮帶", text: "夢幻的皮帶" },
-      { group: "漆黑的 Boss 飾品", value: "指揮官力量耳環", text: "指揮官力量耳環" },
-      { group: "漆黑的 Boss 飾品", value: "黑之心", text: "黑之心" },
-      { group: "黎明的 Boss 飾品", value: "黎明守護天使戒指", text: "黎明守護天使戒指" },
-      { group: "黎明的 Boss 飾品", value: "破曉墜飾", text: "破曉墜飾" },
-      { group: "黎明的 Boss 飾品", value: "暮光印記", text: "暮光印記" },
-      { group: "黎明的 Boss 飾品", value: "星耀耳環", text: "星耀耳環" },
-      { group: "特殊箱子 / 其他", value: "戒指箱子 (Lv.4)", text: "戒指箱子 (Lv.4)" },
-      { group: "特殊箱子 / 其他", value: "戒指箱子 (Lv.3)", text: "戒指箱子 (Lv.3)" },
-      { group: "特殊箱子 / 其他", value: "靈魂寶珠", text: "靈魂寶珠" },
-      { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" },
-      { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
+      { group: "漆黑飾品", value: "口紅控制機", text: "口紅控制機" }, { group: "漆黑飾品", value: "附有魔力的眼罩", text: "附有魔力的眼罩" }, { group: "漆黑飾品", value: "巨大恐怖", text: "巨大恐怖" }, { group: "漆黑飾品", value: "苦痛的根源", text: "苦痛的根源" }, { group: "漆黑飾品", value: "創世徽章", text: "創世徽章" }, { group: "漆黑飾品", value: "破滅的標記", text: "破滅的標記" }, { group: "漆黑飾品", value: "夢幻的皮帶", text: "夢幻的皮帶" }, { group: "漆黑飾品", value: "指揮官力量耳環", text: "指揮官力量耳環" }, { group: "漆黑飾品", value: "黑之心", text: "黑之心" },
+      { group: "黎明飾品", value: "黎明守護天使戒指", text: "黎明守護天使戒指" }, { group: "黎明飾品", value: "破曉墜飾", text: "破曉墜飾" }, { group: "黎明飾品", value: "暮光印記", text: "暮光印記" }, { group: "黎明飾品", value: "星耀耳環", text: "星耀耳環" },
+      { group: "其他", value: "戒指箱子 (Lv.4)", text: "戒指箱子 (Lv.4)" }, { group: "其他", value: "戒指箱子 (Lv.3)", text: "戒指箱子 (Lv.3)" }, { group: "其他", value: "靈魂寶珠", text: "靈魂寶珠" }
   ];
 
   function getCustomItems() { return JSON.parse(localStorage.getItem("ms_custom_items")) || []; }
-  
   function renderCustomItemList() {
       const list = document.getElementById("custom-item-list"); list.innerHTML = ""; const items = getCustomItems();
       if(items.length === 0) { list.innerHTML = `<li class="list-group-item text-muted text-center">目前無自訂物品</li>`; return; }
@@ -415,62 +419,50 @@
 
   function initItemSelect() {
       if (itemSelect) { itemSelect.destroy(); } 
-      const customItems = getCustomItems().map(name => ({ group: "📌 我的自訂物品", value: name, text: name }));
+      const customItems = getCustomItems().map(name => ({ group: "📌 我的自訂", value: name, text: name }));
       const allOptions = [...customItems, ...defaultItemOptions];
-      
       itemSelect = new TomSelect("#input-item-name", {
-          options: allOptions,
-          optgroups: [
-              { value: "📌 我的自訂物品", label: "📌 我的自訂物品" },
-              { value: "漆黑的 Boss 飾品", label: "漆黑的 Boss 飾品" },
-              { value: "黎明的 Boss 飾品", label: "黎明的 Boss 飾品" },
-              { value: "特殊箱子 / 其他", label: "特殊箱子 / 其他" },
-              { value: "研磨石 / 其他", label: "研磨石 / 其他" }
-          ],
-          optgroupField: 'group', labelField: 'text', valueField: 'value', searchField: ['text'],
+          options: allOptions, optgroupField: 'group', labelField: 'text', valueField: 'value', searchField: ['text'],
           create: true, placeholder: "選擇或輸入掉落物品..."
       });
   }
 
-  // ==========================================
-  // [常規預設王表機制]
-  // ==========================================
   function loadRoutineBosses() {
-      if(!bossSelect) return;
+      if(!bossSelectRoutine) return;
       let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
-      let defaults = routineMap[activeChar] || [];
-      bossSelect.setValue(defaults);
+      bossSelectRoutine.setValue(routineMap[activeChar] || []);
   }
 
-  document.getElementById("btn-save-routine").addEventListener("click", (e) => {
+  document.getElementById("btn-save-routine-preset").addEventListener("click", (e) => {
       e.preventDefault();
-      let selected = bossSelect.getValue(); 
+      let selected = bossSelectRoutine.getValue(); 
       let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
-      routineMap[activeChar] = selected;
-      localStorage.setItem("ms_routine_bosses", JSON.stringify(routineMap));
-      alert(`⭐ 已將這 ${selected.length} 隻王設為【${activeChar}】的每週常規清單！\n下次切換角色時會自動載入。`);
+      routineMap[activeChar] = selected; localStorage.setItem("ms_routine_bosses", JSON.stringify(routineMap));
+      alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！`);
   });
 
   // ==========================================
-  // [模組 A] 登入與介面切換 
+  // [初始化與登入]
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
-          currentUserUid = user.uid; currentUserName = user.displayName;
-          document.getElementById("user-name").innerText = currentUserName;
+          currentUserUid = user.uid; 
+          document.getElementById("user-name").innerText = user.displayName;
           loginScreen.style.display = "none"; mainApp.style.display = "block"; 
           
-          if (!bossSelect) {
-              document.getElementById("input-boss").innerHTML = document.getElementById("hidden-boss-options").innerHTML;
-              bossSelect = new TomSelect("#input-boss", { 
-                  create: false, 
-                  maxItems: null, 
-                  plugins: ['remove_button'],
-                  placeholder: "輸入簡稱或點擊選擇目標..." 
-              });
+          if (!bossSelectRoutine) {
+              const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
+              document.getElementById("input-boss-routine").innerHTML = optionsHtml;
+              document.getElementById("input-boss-loot").innerHTML = optionsHtml;
+              
+              // Routine 是多選
+              bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)..." });
+              // Loot 是單選
+              bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標..." });
           }
           initItemSelect(); renderCustomItemList(); 
-          document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; 
+          document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
+          document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
 
           renderSidebar(); loadRecords(); 
       } else {
@@ -479,16 +471,15 @@
   });
 
   document.getElementById("btn-login").addEventListener("click", () => signInWithRedirect(auth, provider));
-  document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定要登出系統嗎？")) signOut(auth); });
+  document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
   // ==========================================
-  // [模組 C] 時間計算與 📝 週常保底任務系統
+  // [時間與側邊欄邏輯]
   // ==========================================
   function getWeekBoundaries() {
       const now = new Date(); const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
-      const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu);
-      thisWeekStart.setHours(0, 0, 0, 0);
+      const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu); thisWeekStart.setHours(0, 0, 0, 0);
       const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
       return { thisWeekStart, lastWeekStart };
   }
@@ -507,40 +498,24 @@
   }
   setInterval(updateCountdowns, 60000); updateCountdowns();
 
-  const weeklyTaskNames = ["地下水道", "公會城 / 跑旗", "每週任務 (解圖/跳舞)", "武陵道場"];
   function renderWeeklyTasks() {
       const container = document.getElementById("weekly-tasks-container"); container.innerHTML = "";
       if(!activeChar) return;
-
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
       let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
-      
-      if (savedData.weekStart !== thisWeekStart) {
-          savedData = { weekStart: thisWeekStart, tasks: {} };
-          localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData));
-      }
-
-      weeklyTaskNames.forEach((task, idx) => {
+      if (savedData.weekStart !== thisWeekStart) { savedData = { weekStart: thisWeekStart, tasks: {} }; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }
+      ["地下水道", "公會城 / 跑旗", "每週任務", "武陵道場"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
-          div.innerHTML = `
-              <input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}>
-              <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>
-          `;
+          div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
           container.appendChild(div);
       });
-
-      document.querySelectorAll(".task-checkbox").forEach(chk => {
-          chk.addEventListener("change", (e) => {
-              savedData.tasks[e.target.dataset.idx] = e.target.checked;
-              localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData));
-          });
-      });
+      document.querySelectorAll(".task-checkbox").forEach(chk => { chk.addEventListener("change", (e) => { savedData.tasks[e.target.dataset.idx] = e.target.checked; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }); });
   }
 
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
-      document.getElementById("dashboard-title").innerText = myCharacters.length === 0 ? `請先新增角色` : `${activeChar} - 收益與討伐紀錄`; 
+      document.getElementById("dashboard-title").innerText = myCharacters.length === 0 ? `請先新增角色` : `${activeChar}`; 
       myCharacters.forEach((charName, index) => {
           const a = document.createElement("a"); a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
           if (charName === activeChar) a.classList.add("active");
@@ -548,31 +523,23 @@
           textSpan.addEventListener("click", (e) => { e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords(); });
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
           editBtn.addEventListener("click", (e) => {
-              e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除角色)`, charName);
+              e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除)`, charName);
               if (action === null) return; 
               if (action.trim() === "") { if (confirm(`確定刪除【${charName}】？`)) { myCharacters.splice(index, 1); activeChar = myCharacters.length > 0 ? myCharacters[0] : ""; localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); } } 
               else { myCharacters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); }
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
-      
-      renderWeeklyTasks();
-      loadRoutineBosses(); 
+      renderWeeklyTasks(); loadRoutineBosses(); 
   }
-  
-  document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("請輸入新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
+  document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
 
-  // ==========================================
-  // [模組 D] 🟩 熱力圖與表格讀取
-  // ==========================================
   function renderHeatmap(records) {
       const heatmapGrid = document.getElementById("heatmap-grid"); heatmapGrid.innerHTML = "";
       const today = new Date(); today.setHours(0,0,0,0);
       let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
-      
       let dateCounts = {};
       records.forEach(r => { if(r.character_name === activeChar) dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; });
-
       let currDate = new Date(startDate);
       while(currDate <= today) {
           let dateStr = currDate.toISOString().split('T')[0]; let count = dateCounts[dateStr] || 0;
@@ -583,247 +550,274 @@
       setTimeout(() => { document.querySelector('.heatmap-container').scrollLeft = 9999; }, 100);
   }
 
+  // ==========================================
+  // [核心讀取與雙表格渲染]
+  // ==========================================
   async function loadRecords() {
       if(!currentUserUid) return;
-      const tableBody = document.getElementById("table-body");
       try {
-          tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">資料同步中...</td></tr>';
           const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
           const querySnapshot = await getDocs(q);
           
-          let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0; 
-          let charWeeklyCount = 0; let records = []; const boundaries = getWeekBoundaries();
+          let records = []; const boundaries = getWeekBoundaries();
+          let accountWeeklyCrystal = 0; let accountUnsettledCount = 0; 
+          let charWeeklyCount = 0; 
 
           querySnapshot.forEach((doc) => { 
               let data = doc.data(); data.id = doc.id; 
-              if (data.character_name === activeChar) {
-                  records.push(data); 
-                  if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
-              }
+              records.push(data); 
+
+              // 🌐 全帳號統計
+              if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion;
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "未結清" && data.my_dividend_billion > 0) accountUnsettledCount += data.my_dividend_billion;
+              
+              // 📊 當前角色 12隻進度
+              if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
           });
           
-          currentRecordsData = records; 
+          currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
+          
+          // 更新頂部儀表板
+          document.getElementById("account-total-crystal").innerText = accountWeeklyCrystal.toFixed(2) + " 億";
+          document.getElementById("account-total-unsettled").innerText = accountUnsettledCount.toFixed(2) + " 億";
           document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
-          document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 
-              ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" 
-              : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
+          document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
+          
           renderHeatmap(records);
 
-          records.sort((a, b) => new Date(b.date) - new Date(a.date));
-          const weekFilter = document.getElementById("filter-week").value;
-          let filteredRecords = records.filter(data => {
-              const recordDate = new Date(data.date + "T00:00:00");
-              if (weekFilter === "this_week") return recordDate >= boundaries.thisWeekStart;
-              if (weekFilter === "last_week") return recordDate >= boundaries.lastWeekStart && recordDate < boundaries.thisWeekStart;
-              return true; 
-          });
+          // 拆分資料給兩個 Table
+          renderRoutineTable(boundaries);
+          renderLootTable();
 
-          let html = "";
-          filteredRecords.forEach((data) => {
-              totalCrystal += data.crystal_income_billion;
-              if (data.my_dividend_billion) totalDividend += data.my_dividend_billion;
-              if (data.status === "待售出") pendingCount++;
-              if (data.payout_status === "未結清") unsettledCount++;
-
-              let statusBadge = `<span class="status-pending">${data.status}</span>`;
-              if (data.status === "已售出" || data.status === "已分紅") statusBadge = `<span class="status-sold">已售出</span>`;
-              if (data.status === "無" || data.status === "僅紀錄") statusBadge = `<span class="text-muted">--</span>`;
-
-              let payoutBadge = data.payout_status === "未結清" ? ` <span class="badge bg-danger">未結清</span>` : data.payout_status === "已結清" ? ` <span class="badge bg-success">已結清</span>` : "";
-
-              let battleInfo = "";
-              if (data.clear_time || data.lives_left) {
-                  let timeStr = data.clear_time ? `⏱️ ${data.clear_time}` : ""; let lifeStr = data.lives_left ? `❤️ x${data.lives_left}` : "";
-                  battleInfo = `<br><span class="badge-battle">${timeStr} ${lifeStr}</span>`;
-              }
-              if (data.memo) battleInfo += `<span class="memo-text">備註：${data.memo}</span>`;
-
-              let incomeHtml = `<div class="crystal-text">💎 ${data.crystal_income_billion} 億</div>`;
-              if (data.my_dividend_billion > 0) incomeHtml += `<div class="dividend-text" style="font-size:0.9em;">💰 +${data.my_dividend_billion} 億</div>`;
-
-              html += `
-                  <tr>
-                      <td class="text-start ps-3">
-                          <div class="fw-bold">${data.boss_name} <small class="text-muted fw-normal">${data.date}</small></div>
-                          ${battleInfo}
-                      </td>
-                      <td class="text-nowrap">${incomeHtml}</td>
-                      <td class="text-nowrap">${data.item_name}<br>${statusBadge}${payoutBadge}</td> 
-                      <td>
-                          <div class="d-flex flex-column flex-xl-row gap-1 justify-content-center">
-                              <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}">編輯</button>
-                              <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
-                          </div>
-                      </td>
-                  </tr>
-              `;
-          });
-
-          tableBody.innerHTML = html === "" ? '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>' : html;
-          document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`; document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
-          document.getElementById("stat-pending").innerText = `${pendingCount} 件`; document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`; 
-
-      } catch (error) { console.error(error); tableBody.innerHTML = '<tr><td colspan="4" class="text-danger">讀取失敗，請確認網路或登入狀態</td></tr>'; }
+      } catch (error) { console.error(error); }
   }
-  document.getElementById("filter-week").addEventListener("change", loadRecords);
 
-  // ==========================================
-  // [模組 E] 存檔與編輯更新 
-  // ==========================================
-  const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
-  const saveBtn = document.getElementById("btn-save"); const cancelEditBtn = document.getElementById("btn-cancel-edit");
-
-  saveBtn.addEventListener("click", async () => {
-      if(!currentUserUid) { alert("請先登入系統。"); return; }
+  // 渲染表一：常規表 (顯示該角色所有紀錄，受時間過濾)
+  function renderRoutineTable(boundaries) {
+      const tableBody = document.getElementById("table-body-routine");
+      const weekFilter = document.getElementById("filter-week-routine").value;
       
-      const recordDate = document.getElementById("input-date").value;
-      if (!recordDate) { alert("請選擇討伐日期！"); return; }
+      let filtered = currentRecordsData.filter(d => {
+          if(d.character_name !== activeChar) return false;
+          const rd = new Date(d.date + "T00:00:00");
+          if (weekFilter === "this_week") return rd >= boundaries.thisWeekStart;
+          if (weekFilter === "last_week") return rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
+          return true;
+      });
+
+      let html = "";
+      filtered.forEach(data => {
+          let dropsInfo = data.item_name !== "無" ? `<span class="badge bg-warning text-dark">📦 ${data.item_name}</span>` : `<span class="text-muted">--</span>`;
+          html += `
+              <tr>
+                  <td class="text-start ps-3">
+                      <div class="fw-bold">${data.boss_name} <small class="text-muted fw-normal">${data.date}</small></div>
+                      <span class="badge-battle">👥 ${data.total_players}人平分</span>
+                  </td>
+                  <td><span class="crystal-text">${data.crystal_income_billion} 億</span></td>
+                  <td>${dropsInfo}</td> 
+                  <td>
+                      <div class="d-flex flex-column gap-1 justify-content-center">
+                          <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}" data-type="routine">編輯</button>
+                          <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
+                      </div>
+                  </td>
+              </tr>
+          `;
+      });
+      tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>';
+  }
+  document.getElementById("filter-week-routine").addEventListener("change", () => renderRoutineTable(getWeekBoundaries()));
+
+  // 渲染表二：寶物表 (無視時間，置頂未結案，顯示所有寶物)
+  function renderLootTable() {
+      const tableBody = document.getElementById("table-body-loot");
       
-      const selectedBosses = bossSelect.getValue(); 
-      if (!selectedBosses || selectedBosses.length === 0) { alert("請至少選擇一隻討伐目標！"); return; }
-
-      const editId = document.getElementById("edit-doc-id").value;
+      // 濾出所有有掉寶的紀錄 (不限角色，或只看當前角色？實戰中通常看當前角色)
+      let lootRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無");
       
-      if ((dropCheck.checked || editId) && selectedBosses.length > 1) {
-          alert("【系統提示】\n登記特殊掉寶 或 編輯紀錄時，一次只能選擇一隻王喔！");
-          return;
-      }
+      // 排序：未結案的放前面，日期新的放前面
+      lootRecords.sort((a, b) => {
+          let aPending = (a.status === "待售出" || a.payout_status === "未結清") ? 1 : 0;
+          let bPending = (b.status === "待售出" || b.payout_status === "未結清") ? 1 : 0;
+          if(aPending !== bPending) return bPending - aPending; 
+          return new Date(b.date) - new Date(a.date);
+      });
 
-      // 💡 取得選擇的「討伐人數」，不再依賴陣列長度
-      const partySize = parseInt(document.getElementById("input-party-size").value) || 1;
-      const teammatesStr = document.getElementById("input-teammates").value;
-      let teamArray = teammatesStr.split(/[\s,，、]+/).filter(name => name.trim() !== "");
-      
-      let itemName = "無", itemTotalPrice = 0, myDividend = 0, status = "僅紀錄", payoutStatus = "無需分帳";
-      
-      if (dropCheck.checked) {
-          itemName = document.getElementById("input-item-name").value || "無";
-          itemTotalPrice = parseFloat(document.getElementById("input-item-price").value) || 0;
-          myDividend = itemTotalPrice > 0 ? (itemTotalPrice / partySize).toFixed(2) : 0;
-          status = document.getElementById("input-status").value;
-          payoutStatus = document.getElementById("input-payout-status").value;
-
-          if (itemName !== "無" && !defaultItemOptions.some(d => d.value === itemName)) {
-              let items = getCustomItems();
-              if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
-          }
-      }
-
-      try {
-          saveBtn.innerText = "處理中..."; saveBtn.disabled = true;
-
-          let promises = [];
-          for (let boss of selectedBosses) {
-              const basePrice = bossCrystalPrices[boss] || 0;
-              const myCrystalIncome = (basePrice / partySize).toFixed(2); 
-
-              const recordData = {
-                  uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
-                  date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, // 💡 寫入指定的除法人數
-                  crystal_income_billion: parseFloat(myCrystalIncome),
-                  clear_time: document.getElementById("input-clear-time").value.trim(), lives_left: document.getElementById("input-lives").value.trim(), memo: document.getElementById("input-memo").value.trim(), 
-                  item_total_price_billion: itemTotalPrice, my_dividend_billion: parseFloat(myDividend),
-                  item_name: itemName, status: status, payout_status: payoutStatus
-              };
-
-              if (editId) {
-                  promises.push(updateDoc(doc(db, "DropRecords", editId), recordData));
-              } else {
-                  promises.push(addDoc(collection(db, "DropRecords"), recordData));
-              }
-          }
-
-          await Promise.all(promises);
-
-          if (editId) {
-              alert("紀錄已更新！");
-          } else {
-              alert(`✅ 成功寫入 ${selectedBosses.length} 筆討伐紀錄！`);
-          }
+      let html = "";
+      lootRecords.forEach(data => {
+          let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
+          let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
           
-          resetFormState(); loadRecords(); 
-      } catch (error) { console.error(error); alert("儲存失敗，請檢查網路連線。"); resetFormState(); }
+          html += `
+              <tr>
+                  <td class="text-start ps-3">
+                      <div class="fw-bold text-primary">📦 ${data.item_name}</div>
+                      <small class="text-muted">${data.date} | ${data.boss_name}</small>
+                  </td>
+                  <td>
+                      <div class="text-muted" style="font-size:0.85em;">售價: ${data.item_total_price_billion} 億</div>
+                      <div class="dividend-text">分紅: +${data.my_dividend_billion} 億</div>
+                  </td>
+                  <td><div class="d-flex flex-column gap-1 align-items-center">${sBadge}${pBadge}</div></td> 
+                  <td>
+                      <div class="d-flex flex-column gap-1 justify-content-center">
+                          <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}" data-type="loot">編輯帳務</button>
+                          <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
+                      </div>
+                  </td>
+              </tr>
+          `;
+      });
+      tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">目前寶物庫空空如也</td></tr>';
+  }
+
+
+  // ==========================================
+  // [儲存邏輯 1：常規打卡]
+  // ==========================================
+  const saveBtnRoutine = document.getElementById("btn-save-routine"); const cancelEditRoutineBtn = document.getElementById("btn-cancel-edit-routine");
+  saveBtnRoutine.addEventListener("click", async () => {
+      const recordDate = document.getElementById("input-date-routine").value;
+      const selectedBosses = bossSelectRoutine.getValue(); 
+      if (!selectedBosses || selectedBosses.length === 0) { alert("請至少選擇一隻目標！"); return; }
+      
+      const partySize = parseInt(document.getElementById("input-party-size-routine").value) || 1;
+      const teamArray = document.getElementById("input-teammates-routine").value.split(/[\s,，、]+/).filter(n => n.trim() !== "");
+      const memo = document.getElementById("input-memo-routine").value.trim();
+      const editId = document.getElementById("edit-doc-id-routine").value;
+
+      if (editId && selectedBosses.length > 1) { alert("編輯模式一次只能處理一筆紀錄喔！"); return; }
+
+      saveBtnRoutine.innerText = "處理中..."; saveBtnRoutine.disabled = true;
+      let promises = [];
+      
+      for (let boss of selectedBosses) {
+          const myCrystalIncome = ((bossCrystalPrices[boss] || 0) / partySize).toFixed(2); 
+          const data = {
+              uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+              date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
+              crystal_income_billion: parseFloat(myCrystalIncome), item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
+              memo: memo, status: "僅紀錄", payout_status: "無需分帳"
+          };
+          if (editId) promises.push(updateDoc(doc(db, "DropRecords", editId), data));
+          else promises.push(addDoc(collection(db, "DropRecords"), data));
+      }
+
+      await Promise.all(promises);
+      resetRoutineForm(); loadRecords(); 
+  });
+  
+  cancelEditRoutineBtn.addEventListener("click", resetRoutineForm);
+  function resetRoutineForm() {
+      document.getElementById("form-routine").reset(); document.getElementById("edit-doc-id-routine").value = "";
+      document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; document.getElementById("input-party-size-routine").value = "1";
+      loadRoutineBosses(); 
+      document.getElementById("form-title-routine").innerText = "新增常規討伐"; saveBtnRoutine.innerText = "💾 儲存紀錄"; saveBtnRoutine.classList.replace("btn-primary", "btn-dark"); cancelEditRoutineBtn.classList.add("d-none"); saveBtnRoutine.disabled = false;
+  }
+
+  // ==========================================
+  // [儲存邏輯 2：掉寶帳務]
+  // ==========================================
+  const saveBtnLoot = document.getElementById("btn-save-loot"); const cancelEditLootBtn = document.getElementById("btn-cancel-edit-loot");
+  saveBtnLoot.addEventListener("click", async () => {
+      const recordDate = document.getElementById("input-date-loot").value;
+      const boss = bossSelectLoot.getValue(); if (!boss) { alert("請選擇掉寶目標！"); return; }
+      const itemName = itemSelect.getValue(); if (!itemName) { alert("請選擇掉落物品！"); return; }
+      
+      const partySize = parseInt(document.getElementById("input-party-size-loot").value) || 1;
+      const teamArray = document.getElementById("input-teammates-loot").value.split(/[\s,，、]+/).filter(n => n.trim() !== "");
+      
+      const price = parseFloat(document.getElementById("input-item-price").value) || 0;
+      const dividend = price > 0 ? (price / partySize).toFixed(2) : 0;
+      const myCrystalIncome = ((bossCrystalPrices[boss] || 0) / partySize).toFixed(2); 
+
+      if (!defaultItemOptions.some(d => d.value === itemName)) {
+          let items = getCustomItems(); if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
+      }
+
+      const data = {
+          uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+          date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, crystal_income_billion: parseFloat(myCrystalIncome), 
+          item_name: itemName, item_total_price_billion: price, my_dividend_billion: parseFloat(dividend),
+          status: document.getElementById("input-status").value, payout_status: document.getElementById("input-payout-status").value
+      };
+
+      const editId = document.getElementById("edit-doc-id-loot").value;
+      saveBtnLoot.innerText = "處理中..."; saveBtnLoot.disabled = true;
+      if (editId) await updateDoc(doc(db, "DropRecords", editId), data);
+      else await addDoc(collection(db, "DropRecords"), data);
+      
+      resetLootForm(); loadRecords(); 
   });
 
-  cancelEditBtn.addEventListener("click", resetFormState);
-  function resetFormState() {
-      document.getElementById("record-form").reset(); document.getElementById("edit-doc-id").value = "";
-      document.getElementById("input-date").value = new Date().toISOString().split('T')[0]; 
-      document.getElementById("input-party-size").value = "1"; // 恢復單吃預設
-      
-      dropCheck.checked = false; dropContainer.classList.add("d-none");
-      
-      loadRoutineBosses(); 
-      
-      if(itemSelect) itemSelect.clear();
-      document.getElementById("form-title").innerText = "新增討伐紀錄"; saveBtn.innerText = "💾 儲存紀錄"; saveBtn.classList.replace("btn-primary", "btn-dark"); cancelEditBtn.classList.add("d-none"); saveBtn.disabled = false;
+  cancelEditLootBtn.addEventListener("click", resetLootForm);
+  function resetLootForm() {
+      document.getElementById("form-loot").reset(); document.getElementById("edit-doc-id-loot").value = "";
+      document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; document.getElementById("input-party-size-loot").value = "1";
+      if(bossSelectLoot) bossSelectLoot.clear(); if(itemSelect) itemSelect.clear();
+      document.getElementById("form-title-loot").innerText = "新增掉寶紀錄"; saveBtnLoot.innerText = "💾 儲存掉寶"; cancelEditLootBtn.classList.add("d-none"); saveBtnLoot.disabled = false;
   }
 
   // ==========================================
-  // [模組 F] 表格操作邏輯
+  // [編輯與刪除]
   // ==========================================
-  document.getElementById("table-body").addEventListener("click", async (e) => {
-      const btnDelete = e.target.closest(".btn-delete-record");
-      if (btnDelete) { if (confirm("確定刪除此紀錄？無法復原。")) { try { await deleteDoc(doc(db, "DropRecords", btnDelete.getAttribute("data-id"))); loadRecords(); } catch (err) { alert("刪除失敗"); } } return; }
+  document.addEventListener("click", async (e) => {
+      // 刪除共用
+      const btnDel = e.target.closest(".btn-delete-record");
+      if (btnDel && confirm("確定刪除此紀錄？")) { await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); loadRecords(); return; }
 
+      // 編輯
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
-          const docId = btnEdit.getAttribute("data-id"); const targetData = currentRecordsData.find(d => d.id === docId);
-          if (targetData) {
-              document.getElementById("edit-doc-id").value = docId;
-              document.getElementById("input-date").value = targetData.date; 
-              if(bossSelect) bossSelect.setValue([targetData.boss_name]); 
-              
-              // 💡 載入當時設定的人數
-              document.getElementById("input-party-size").value = targetData.total_players || 1;
-              document.getElementById("input-teammates").value = targetData.teammates.join(" "); 
-              
-              document.getElementById("input-clear-time").value = targetData.clear_time || ""; document.getElementById("input-lives").value = targetData.lives_left || ""; document.getElementById("input-memo").value = targetData.memo || "";
-              
-              if(targetData.item_name && targetData.item_name !== "無") { 
-                  dropCheck.checked = true; dropContainer.classList.remove("d-none");
-                  if(itemSelect) { itemSelect.addOption({value: targetData.item_name, text: targetData.item_name}); itemSelect.setValue(targetData.item_name); }
-                  document.getElementById("input-status").value = targetData.status || "待售出"; 
-                  document.getElementById("input-item-price").value = targetData.item_total_price_billion || ""; 
-                  document.getElementById("input-payout-status").value = targetData.payout_status || "未結清";
-              } else { 
-                  dropCheck.checked = false; dropContainer.classList.add("d-none");
-                  if(itemSelect) itemSelect.setValue(""); 
-              }
+          const docId = btnEdit.getAttribute("data-id"); const type = btnEdit.getAttribute("data-type");
+          const d = currentRecordsData.find(x => x.id === docId);
+          if (!d) return;
 
-              document.getElementById("form-title").innerText = "✏️ 編輯討伐紀錄"; saveBtn.innerText = "💾 更新紀錄"; saveBtn.classList.replace("btn-dark", "btn-primary"); cancelEditBtn.classList.remove("d-none");
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+          if (type === "routine") {
+              // 切換到常規 Tab
+              new bootstrap.Tab(document.getElementById('routine-tab')).show();
+              document.getElementById("edit-doc-id-routine").value = docId;
+              document.getElementById("input-date-routine").value = d.date;
+              bossSelectRoutine.setValue([d.boss_name]);
+              document.getElementById("input-party-size-routine").value = d.total_players || 1;
+              document.getElementById("input-teammates-routine").value = d.teammates.join(" ");
+              document.getElementById("input-memo-routine").value = d.memo || "";
+              
+              document.getElementById("form-title-routine").innerText = "✏️ 編輯常規紀錄"; saveBtnRoutine.innerText = "💾 更新紀錄"; saveBtnRoutine.classList.replace("btn-dark", "btn-primary"); cancelEditRoutineBtn.classList.remove("d-none");
+          } else {
+              // 切換到掉寶 Tab
+              new bootstrap.Tab(document.getElementById('loot-tab')).show();
+              document.getElementById("edit-doc-id-loot").value = docId;
+              document.getElementById("input-date-loot").value = d.date;
+              bossSelectLoot.setValue(d.boss_name);
+              itemSelect.setValue(d.item_name);
+              document.getElementById("input-party-size-loot").value = d.total_players || 1;
+              document.getElementById("input-teammates-loot").value = d.teammates.join(" ");
+              document.getElementById("input-status").value = d.status || "待售出";
+              document.getElementById("input-item-price").value = d.item_total_price_billion || "";
+              document.getElementById("input-payout-status").value = d.payout_status || "未結清";
+
+              document.getElementById("form-title-loot").innerText = "✏️ 編輯掉寶帳務"; saveBtnLoot.innerText = "💾 更新帳務"; cancelEditLootBtn.classList.remove("d-none");
           }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
       }
   });
 
   // ==========================================
-  // [模組 G] 複製摘要與 CSV 匯出
+  // [對帳單複製]
   // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
-      const boundaries = getWeekBoundaries(); const weekFilter = document.getElementById("filter-week").value;
-      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar && (weekFilter === "all" || (weekFilter === "this_week" ? new Date(d.date+"T00:00:00") >= boundaries.thisWeekStart : new Date(d.date+"T00:00:00") >= boundaries.lastWeekStart && new Date(d.date+"T00:00:00") < boundaries.thisWeekStart)));
-      if(filteredRecords.length === 0){ alert("目前無資料可供輸出。"); return; }
-      let report = `📊 ${activeChar} 討伐摘要 📊\n------------------------\n`; let totalCrys = 0, totalDiv = 0; let drops = [];
-      filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(d => {
-          totalCrys += d.crystal_income_billion; if(d.my_dividend_billion) totalDiv += d.my_dividend_billion;
-          let dropsInfo = d.item_name !== "無" && d.item_name !== "" ? `｜📦 ${d.item_name}` : "";
-          report += `⚔️ ${d.boss_name.split(" ")[0]} (${d.total_players}人) ｜ 💰 共計: ${(d.crystal_income_billion + (d.my_dividend_billion || 0)).toFixed(2)}億 ${dropsInfo}\n`;
+      let drops = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無" && (d.status === "待售出" || d.payout_status === "未結清"));
+      if(drops.length === 0){ alert("目前沒有未結清的寶物帳務。"); return; }
+      let report = `📦 ${activeChar} 未結清帳務清單 📦\n------------------------\n`;
+      drops.forEach(d => {
+          let s = d.status === "待售出" ? "⏳ 待售出" : `💰 售價 ${d.item_total_price_billion}億`;
+          report += `【${d.item_name}】 (${d.boss_name})\n 👉 狀態: ${s} / 帳款: ${d.payout_status}\n`;
+          if (d.teammates.length > 0) report += ` 👉 分錢名單: ${d.teammates.join(", ")}\n`;
+          report += `\n`;
       });
-      report += `------------------------\n🔥 總計實收: ${(totalCrys + totalDiv).toFixed(2)} 億`;
-      navigator.clipboard.writeText(report).then(() => alert("✅ 摘要已複製！\n\n" + report));
-  });
-
-  document.getElementById("btn-export-csv").addEventListener("click", () => {
-      let filteredRecords = currentRecordsData.filter(d => d.character_name === activeChar);
-      if(filteredRecords.length === 0){ alert("無資料可匯出"); return; }
-      let csv = "\ufeff日期,目標名稱,通關時間,剩餘命數,結晶收益(億),取得物品,售出總價,分紅收益(億),物品狀態,帳款狀態,同行隊友,備註\n";
-      filteredRecords.forEach((d) => {
-          let teamStr = d.teammates && d.teammates.length > 0 ? `"${d.teammates.join("、")}"` : "無"; let memoStr = d.memo ? `"${d.memo.replace(/"/g, '""')}"` : ""; 
-          csv += `${d.date},${d.boss_name},${d.clear_time||""},${d.lives_left||""},${d.crystal_income_billion},${d.item_name !== "無" ? `"${d.item_name}"` : "無"},${d.item_total_price_billion||0},${d.my_dividend_billion||0},${d.status},${d.payout_status||"無需分帳"},${teamStr},${memoStr}\n`;
-      });
-      const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `${activeChar}_收益紀錄.csv`;
-      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      navigator.clipboard.writeText(report).then(() => alert("✅ 對帳單已複製！"));
   });
 
 </script>
