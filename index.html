@@ -358,7 +358,6 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-  // 💡 已經恢復使用穩定版的 signInWithPopup 
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
   const firebaseConfig = {
@@ -447,7 +446,7 @@
   });
 
   // ==========================================
-  // [初始化與登入 (改回穩定的 signInWithPopup)]
+  // [初始化與登入]
   // ==========================================
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -473,7 +472,6 @@
       }
   });
 
-  // 💡 改回 signInWithPopup，完美解決跳轉後被踢出的問題
   document.getElementById("btn-login").addEventListener("click", () => {
       signInWithPopup(auth, provider).catch(error => {
           console.error("登入失敗:", error);
@@ -514,7 +512,7 @@
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
       let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
       if (savedData.weekStart !== thisWeekStart) { savedData = { weekStart: thisWeekStart, tasks: {} }; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }
-      ["地下水道", "公會城簽到 / 跳棋任務", "每週任務", "武陵道場"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -578,7 +576,9 @@
               records.push(data); 
 
               if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion;
-              if (data.item_name && data.item_name !== "無" && data.payout_status === "未結清" && data.my_dividend_billion > 0) accountUnsettledCount += data.my_dividend_billion;
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "未結清" && data.my_dividend_billion > 0) {
+                  accountUnsettledCount += data.my_dividend_billion;
+              }
               if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
           });
           
@@ -647,6 +647,7 @@
       lootRecords.forEach(data => {
           let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
           let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
+          let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
           
           html += `
               <tr>
@@ -656,7 +657,7 @@
                   </td>
                   <td>
                       <div class="text-muted" style="font-size:0.85em;">售價: ${data.item_total_price_billion} 億</div>
-                      <div class="dividend-text">分紅: +${data.my_dividend_billion} 億</div>
+                      <div class="dividend-text">${dividendLabel}: +${data.my_dividend_billion} 億</div>
                   </td>
                   <td><div class="d-flex flex-column gap-1 align-items-center">${sBadge}${pBadge}</div></td> 
                   <td>
