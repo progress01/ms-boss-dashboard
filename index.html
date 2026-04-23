@@ -105,8 +105,8 @@
                         <h4 class="crystal-text mb-0" id="account-total-crystal">0 億</h4>
                     </div>
                     <div class="col-md-4">
-                        <div class="text-muted" style="font-size:0.85rem;">全帳號未結清分紅 (累計)</div>
-                        <h4 class="text-danger mb-0 fw-bold" id="account-total-unsettled">0 億</h4>
+                        <div class="text-muted" style="font-size:0.85rem;">全帳號已結清分紅 (累計)</div>
+                        <h4 class="text-success mb-0 fw-bold" id="account-total-settled">0 億</h4>
                     </div>
                 </div>
             </div>
@@ -116,6 +116,33 @@
                 <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
                     📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
                 </span>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-6 col-md-3 stat-card-wrapper">
+                    <div class="card card-custom p-3 bg-white border-start border-primary border-4">
+                        <h6 class="text-muted">💎 結晶石總計</h6>
+                        <h3 class="crystal-text" id="stat-crystal">0 億</h3>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 stat-card-wrapper">
+                    <div class="card card-custom p-3 bg-white border-start border-success border-4">
+                        <h6 class="text-muted">✨ 已結清分紅總計</h6>
+                        <h3 class="dividend-text" id="stat-drop">0 億</h3>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 stat-card-wrapper">
+                    <div class="card card-custom p-3 bg-white border-start border-warning border-4">
+                        <h6 class="text-muted">⏳ 待售出物品</h6>
+                        <h3 class="text-warning" id="stat-pending">0 件</h3>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 stat-card-wrapper">
+                    <div class="card card-custom p-3 bg-white border-start border-danger border-4">
+                        <h6 class="text-muted">🤝 待結算帳款</h6>
+                        <h3 class="text-danger" id="stat-unsettled">0 筆</h3>
+                    </div>
+                </div>
             </div>
 
             <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
@@ -281,7 +308,7 @@
                                         <thead class="table-light">
                                             <tr>
                                                 <th>物品與目標</th>
-                                                <th>總售價 / 個人分紅</th>
+                                                <th>總售價 / 個人收益</th>
                                                 <th>狀態追蹤</th>
                                                 <th>操作</th>
                                             </tr>
@@ -512,7 +539,7 @@
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
       let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
       if (savedData.weekStart !== thisWeekStart) { savedData = { weekStart: thisWeekStart, tasks: {} }; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }
-      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到", "每週任務", "跳棋任務"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -568,32 +595,74 @@
           const querySnapshot = await getDocs(q);
           
           let records = []; const boundaries = getWeekBoundaries();
-          let accountWeeklyCrystal = 0; let accountUnsettledCount = 0; 
+          let accountWeeklyCrystal = 0; let accountSettledDividend = 0; 
           let charWeeklyCount = 0; 
 
           querySnapshot.forEach((doc) => { 
               let data = doc.data(); data.id = doc.id; 
               records.push(data); 
 
-              if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion;
-              if (data.item_name && data.item_name !== "無" && data.payout_status === "未結清" && data.my_dividend_billion > 0) {
-                  accountUnsettledCount += data.my_dividend_billion;
+              // 🌐 全帳號統計
+              if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion || 0;
+              
+              // 💡 修正邏輯：全帳號已結清的分紅 (真正賺到口袋的錢)
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
+                  accountSettledDividend += data.my_dividend_billion;
               }
+              
+              // 📊 當前角色 12隻進度
               if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
           });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
           
           document.getElementById("account-total-crystal").innerText = accountWeeklyCrystal.toFixed(2) + " 億";
-          document.getElementById("account-total-unsettled").innerText = accountUnsettledCount.toFixed(2) + " 億";
+          document.getElementById("account-total-settled").innerText = accountSettledDividend.toFixed(2) + " 億";
           document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
           document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
           
           renderHeatmap(records);
           renderRoutineTable(boundaries);
           renderLootTable();
+          updateCharacterStats(boundaries); // 💡 修復 4 張卡片數值歸 0 的問題
 
       } catch (error) { console.error(error); }
+  }
+
+  // 💡 重新加入更新角色 4 張卡片的函數
+  function updateCharacterStats(boundaries) {
+      const weekFilter = document.getElementById("filter-week-routine").value;
+      let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0;
+
+      currentRecordsData.forEach(data => {
+          if (data.character_name !== activeChar) return;
+
+          const rd = new Date(data.date + "T00:00:00");
+          let inDateRange = true;
+          if (weekFilter === "this_week") inDateRange = rd >= boundaries.thisWeekStart;
+          if (weekFilter === "last_week") inDateRange = rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
+
+          // 結晶看當前所選的週次
+          if (inDateRange) {
+              totalCrystal += data.crystal_income_billion || 0;
+          }
+
+          // 寶物相關統計 (無關日期過濾，統計歷史所有筆數)
+          if (data.item_name && data.item_name !== "無") {
+              if (data.status === "待售出") pendingCount++;
+              if (data.payout_status === "未結清") unsettledCount++;
+              
+              // 💡 實收分紅總計 (只算已結清的，代表已入口袋)
+              if (data.payout_status === "已結清" && data.my_dividend_billion > 0) {
+                  totalDividend += data.my_dividend_billion;
+              }
+          }
+      });
+
+      document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`;
+      document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
+      document.getElementById("stat-pending").innerText = `${pendingCount} 件`;
+      document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`;
   }
 
   function renderRoutineTable(boundaries) {
@@ -630,7 +699,13 @@
       });
       tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>';
   }
-  document.getElementById("filter-week-routine").addEventListener("change", () => renderRoutineTable(getWeekBoundaries()));
+  
+  // 💡 當更改日期過濾條件時，同步更新表格與上方卡片
+  document.getElementById("filter-week-routine").addEventListener("change", () => {
+      const b = getWeekBoundaries();
+      renderRoutineTable(b);
+      updateCharacterStats(b);
+  });
 
   function renderLootTable() {
       const tableBody = document.getElementById("table-body-loot");
@@ -647,8 +722,10 @@
       lootRecords.forEach(data => {
           let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
           let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
-          let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
           
+          // 💡 優化：單吃顯示「實收」，多人顯示「分紅」
+          let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
+
           html += `
               <tr>
                   <td class="text-start ps-3">
