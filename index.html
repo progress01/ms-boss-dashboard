@@ -26,16 +26,21 @@
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
 
         .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px 10px; overflow-x: auto; }
+        /* 限制任務清單的高度並開啟垂直滑動 */
+        #weekly-tasks-container { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
+        #weekly-tasks-container::-webkit-scrollbar { width: 6px; }
+        #weekly-tasks-container::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         .sidebar-module::-webkit-scrollbar { height: 6px; }
         .sidebar-module::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; grid-auto-flow: column; width: max-content; }
         .heatmap-cell { width: 12px; height: 12px; border-radius: 2px; transition: 0.2s;}
         .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 10; position: relative;}
+        /* 💡 歐洲熱力圖顏色優化：以黃金/橘色系為主，代表掉寶 */
         .hc-0 { background-color: #2c3e50; } 
-        .hc-1 { background-color: #0e4429; }
-        .hc-2 { background-color: #006d32; }
-        .hc-3 { background-color: #26a641; }
-        .hc-4 { background-color: #39d353; }
+        .hc-1 { background-color: #9e6f21; }
+        .hc-2 { background-color: #d49a2a; }
+        .hc-3 { background-color: #f1b31c; }
+        .hc-4 { background-color: #ffc107; }
         
         .task-checkbox-label { color: #bdc3c7; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
         .form-check-input:checked + .task-checkbox-label { color: #3498db; text-decoration: line-through; opacity: 0.7; }
@@ -78,7 +83,7 @@
             </div>
 
             <div class="sidebar-module mt-2">
-                <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">🔥 討伐活躍度 (近16週)</h6>
+                <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✨ 掉寶歐洲度 (近16週)</h6>
                 <div class="heatmap-grid" id="heatmap-grid"></div>
             </div>
 
@@ -384,7 +389,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
   const firebaseConfig = {
@@ -404,16 +409,22 @@
   
   let currentUserUid = null; 
   let bossSelectRoutine, bossSelectLoot, itemSelect; 
+  
+  // 💡 系統設定資料 (統一從雲端讀取)
+  let userSettings = {
+      characters: ["新角色"],
+      customItems: [],
+      routineBosses: {},
+      weeklyTasks: {}
+  };
+  let activeChar = ""; 
+  let currentRecordsData = [];
 
   const loginScreen = document.getElementById("login-screen");
   const mainApp = document.getElementById("main-app");
 
-  let myCharacters = JSON.parse(localStorage.getItem("ms_characters")) || ["請輸入角色暱稱"];
-  let activeChar = myCharacters[0] || ""; 
-  let currentRecordsData = [];
-
   // ==========================================
-  // [系統配置] 價格與物品
+  // [系統配置] 價格與物品預設值
   // ==========================================
   const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
   
@@ -424,9 +435,44 @@
       { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
-  function getCustomItems() { return JSON.parse(localStorage.getItem("ms_custom_items")) || []; }
+  // ==========================================
+  // [💡 核心邏輯] 雲端設定同步 (讀取與儲存)
+  // ==========================================
+  async function loadUserSettings() {
+      if(!currentUserUid) return;
+      const docRef = doc(db, "UserSettings", currentUserUid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+          userSettings = docSnap.data();
+          // 防呆處理
+          if(!userSettings.characters) userSettings.characters = ["新角色"];
+          if(!userSettings.customItems) userSettings.customItems = [];
+          if(!userSettings.routineBosses) userSettings.routineBosses = {};
+          if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
+      } else {
+          await saveUserSettings(); // 初始化
+      }
+      
+      activeChar = userSettings.characters[0] || "";
+      initItemSelect(); 
+      renderCustomItemList();
+      renderSidebar();
+      loadRecords();
+  }
+
+  async function saveUserSettings() {
+      if(!currentUserUid) return;
+      try {
+          await setDoc(doc(db, "UserSettings", currentUserUid), userSettings);
+      } catch(err) { console.error("設定儲存失敗", err); }
+  }
+
+  // ==========================================
+  // [自訂掉寶管理]
+  // ==========================================
   function renderCustomItemList() {
-      const list = document.getElementById("custom-item-list"); list.innerHTML = ""; const items = getCustomItems();
+      const list = document.getElementById("custom-item-list"); list.innerHTML = ""; 
+      const items = userSettings.customItems;
       if(items.length === 0) { list.innerHTML = `<li class="list-group-item text-muted text-center">目前無自訂物品</li>`; return; }
       items.forEach((item, index) => {
           const li = document.createElement("li"); li.className = "list-group-item d-flex justify-content-between align-items-center";
@@ -436,46 +482,49 @@
 
   document.getElementById("btn-add-custom-item").addEventListener("click", () => {
       const val = document.getElementById("input-custom-item").value.trim();
-      if(val) {
-          let items = getCustomItems();
-          if(!items.includes(val)) { items.push(val); localStorage.setItem("ms_custom_items", JSON.stringify(items)); }
-          document.getElementById("input-custom-item").value = ""; renderCustomItemList(); initItemSelect(); 
+      if(val && !userSettings.customItems.includes(val)) {
+          userSettings.customItems.push(val); 
+          saveUserSettings();
+          document.getElementById("input-custom-item").value = ""; 
+          renderCustomItemList(); initItemSelect(); 
       }
   });
 
   window.deleteCustomItem = function(index) {
-      let items = getCustomItems(); items.splice(index, 1);
-      localStorage.setItem("ms_custom_items", JSON.stringify(items)); renderCustomItemList(); initItemSelect();
+      userSettings.customItems.splice(index, 1);
+      saveUserSettings(); renderCustomItemList(); initItemSelect();
   }
 
   function initItemSelect() {
       if (itemSelect) { itemSelect.destroy(); } 
-      const customItems = getCustomItems().map(name => ({ group: "📌 我的自訂", value: name, text: name }));
-      const allOptions = [...customItems, ...defaultItemOptions];
+      const customOptions = userSettings.customItems.map(name => ({ group: "📌 我的自訂", value: name, text: name }));
+      const allOptions = [...customOptions, ...defaultItemOptions];
       itemSelect = new TomSelect("#input-item-name", {
           options: allOptions, optgroupField: 'group', labelField: 'text', valueField: 'value', searchField: ['text'],
           create: true, placeholder: "選擇或輸入掉落物品..."
       });
   }
 
+  // ==========================================
+  // [常規預設王表機制]
+  // ==========================================
   function loadRoutineBosses() {
       if(!bossSelectRoutine) return;
-      let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
-      bossSelectRoutine.setValue(routineMap[activeChar] || []);
+      bossSelectRoutine.setValue(userSettings.routineBosses[activeChar] || []);
   }
 
   document.getElementById("btn-save-routine-preset").addEventListener("click", (e) => {
       e.preventDefault();
       let selected = bossSelectRoutine.getValue(); 
-      let routineMap = JSON.parse(localStorage.getItem("ms_routine_bosses")) || {};
-      routineMap[activeChar] = selected; localStorage.setItem("ms_routine_bosses", JSON.stringify(routineMap));
+      userSettings.routineBosses[activeChar] = selected; 
+      saveUserSettings();
       alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！`);
   });
 
   // ==========================================
   // [初始化與登入]
   // ==========================================
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
       if (user) {
           currentUserUid = user.uid; 
           document.getElementById("user-name").innerText = user.displayName;
@@ -489,11 +538,12 @@
               bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)..." });
               bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標..." });
           }
-          initItemSelect(); renderCustomItemList(); 
           document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
           document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
 
-          renderSidebar(); loadRecords(); 
+          // 載入雲端設定檔 (取代原本的 LocalStorage 讀取)
+          await loadUserSettings();
+          
       } else {
           currentUserUid = null; loginScreen.style.display = "flex"; mainApp.style.display = "none"; 
       }
@@ -501,15 +551,14 @@
 
   document.getElementById("btn-login").addEventListener("click", () => {
       signInWithPopup(auth, provider).catch(error => {
-          console.error("登入失敗:", error);
-          alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。");
+          console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。");
       });
   });
 
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
   // ==========================================
-  // [時間與側邊欄邏輯]
+  // [時間計算]
   // ==========================================
   function getWeekBoundaries() {
       const now = new Date(); const currentDay = now.getDay(); 
@@ -533,54 +582,96 @@
   }
   setInterval(updateCountdowns, 60000); updateCountdowns();
 
+  // ==========================================
+  // [側邊欄渲染：角色、任務、熱力圖]
+  // ==========================================
   function renderWeeklyTasks() {
       const container = document.getElementById("weekly-tasks-container"); container.innerHTML = "";
       if(!activeChar) return;
       const thisWeekStart = getWeekBoundaries().thisWeekStart.getTime();
-      let savedData = JSON.parse(localStorage.getItem(`ms_tasks_${activeChar}`)) || { weekStart: 0, tasks: {} };
-      if (savedData.weekStart !== thisWeekStart) { savedData = { weekStart: thisWeekStart, tasks: {} }; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }
-      ["地下水道", "公會城簽到", "每週任務", "跳棋任務"].forEach((task, idx) => {
+      
+      // 確保結構存在
+      if(!userSettings.weeklyTasks[activeChar]) userSettings.weeklyTasks[activeChar] = { weekStart: 0, tasks: {} };
+      let savedData = userSettings.weeklyTasks[activeChar];
+      
+      if (savedData.weekStart !== thisWeekStart) { 
+          savedData = { weekStart: thisWeekStart, tasks: {} }; 
+          userSettings.weeklyTasks[activeChar] = savedData;
+          saveUserSettings(); // 跨週重置
+      }
+      
+      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
           container.appendChild(div);
       });
-      document.querySelectorAll(".task-checkbox").forEach(chk => { chk.addEventListener("change", (e) => { savedData.tasks[e.target.dataset.idx] = e.target.checked; localStorage.setItem(`ms_tasks_${activeChar}`, JSON.stringify(savedData)); }); });
+      document.querySelectorAll(".task-checkbox").forEach(chk => { 
+          chk.addEventListener("change", (e) => { 
+              savedData.tasks[e.target.dataset.idx] = e.target.checked; 
+              saveUserSettings(); 
+          }); 
+      });
   }
 
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
-      document.getElementById("dashboard-title").innerText = myCharacters.length === 0 ? `請先新增角色` : `${activeChar}`; 
-      myCharacters.forEach((charName, index) => {
+      document.getElementById("dashboard-title").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `${activeChar}`; 
+      
+      userSettings.characters.forEach((charName, index) => {
           const a = document.createElement("a"); a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
           if (charName === activeChar) a.classList.add("active");
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
+          
           textSpan.addEventListener("click", (e) => { e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords(); });
+          
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
           editBtn.addEventListener("click", (e) => {
               e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除)`, charName);
               if (action === null) return; 
-              if (action.trim() === "") { if (confirm(`確定刪除【${charName}】？`)) { myCharacters.splice(index, 1); activeChar = myCharacters.length > 0 ? myCharacters[0] : ""; localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); } } 
-              else { myCharacters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); renderSidebar(); loadRecords(); }
+              if (action.trim() === "") { 
+                  if (confirm(`確定刪除【${charName}】？`)) { 
+                      userSettings.characters.splice(index, 1); activeChar = userSettings.characters.length > 0 ? userSettings.characters[0] : ""; 
+                      saveUserSettings(); renderSidebar(); loadRecords(); 
+                  } 
+              } else { 
+                  userSettings.characters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); 
+                  saveUserSettings(); renderSidebar(); loadRecords(); 
+              }
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
       renderWeeklyTasks(); loadRoutineBosses(); 
   }
-  document.getElementById("btn-add-char").addEventListener("click", (e) => { e.preventDefault(); const newChar = prompt("新角色名稱："); if (newChar && newChar.trim() !== "") { myCharacters.push(newChar.trim()); localStorage.setItem("ms_characters", JSON.stringify(myCharacters)); activeChar = newChar.trim(); renderSidebar(); loadRecords(); } });
+  
+  document.getElementById("btn-add-char").addEventListener("click", (e) => { 
+      e.preventDefault(); const newChar = prompt("新角色名稱："); 
+      if (newChar && newChar.trim() !== "") { 
+          userSettings.characters.push(newChar.trim()); activeChar = newChar.trim(); 
+          saveUserSettings(); renderSidebar(); loadRecords(); 
+      } 
+  });
 
   function renderHeatmap(records) {
       const heatmapGrid = document.getElementById("heatmap-grid"); heatmapGrid.innerHTML = "";
       const today = new Date(); today.setHours(0,0,0,0);
       let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
+      
       let dateCounts = {};
-      records.forEach(r => { if(r.character_name === activeChar) dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; });
+      records.forEach(r => { 
+          // 💡 歐洲熱力圖邏輯：只計算「有掉寶」的紀錄
+          if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
+              dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
+          }
+      });
+      
       let currDate = new Date(startDate);
       while(currDate <= today) {
           let dateStr = currDate.toISOString().split('T')[0]; let count = dateCounts[dateStr] || 0;
           let cell = document.createElement("div"); cell.className = "heatmap-cell";
           if(count === 0) cell.classList.add("hc-0"); else if(count <= 1) cell.classList.add("hc-1"); else if(count <= 2) cell.classList.add("hc-2"); else if(count <= 4) cell.classList.add("hc-3"); else cell.classList.add("hc-4");
-          cell.title = `${dateStr} 討伐了 ${count} 隻王`; heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
+          cell.title = count > 0 ? `${dateStr} 掉落了 ${count} 個寶物！` : `${dateStr} 無掉寶`; 
+          heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
       setTimeout(() => { document.querySelector('.heatmap-container').scrollLeft = 9999; }, 100);
   }
@@ -602,15 +693,10 @@
               let data = doc.data(); data.id = doc.id; 
               records.push(data); 
 
-              // 🌐 全帳號統計
               if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion || 0;
-              
-              // 💡 修正邏輯：全帳號已結清的分紅 (真正賺到口袋的錢)
               if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
                   accountSettledDividend += data.my_dividend_billion;
               }
-              
-              // 📊 當前角色 12隻進度
               if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
           });
           
@@ -624,12 +710,11 @@
           renderHeatmap(records);
           renderRoutineTable(boundaries);
           renderLootTable();
-          updateCharacterStats(boundaries); // 💡 修復 4 張卡片數值歸 0 的問題
+          updateCharacterStats(boundaries);
 
       } catch (error) { console.error(error); }
   }
 
-  // 💡 重新加入更新角色 4 張卡片的函數
   function updateCharacterStats(boundaries) {
       const weekFilter = document.getElementById("filter-week-routine").value;
       let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0;
@@ -642,17 +727,13 @@
           if (weekFilter === "this_week") inDateRange = rd >= boundaries.thisWeekStart;
           if (weekFilter === "last_week") inDateRange = rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
 
-          // 結晶看當前所選的週次
           if (inDateRange) {
               totalCrystal += data.crystal_income_billion || 0;
           }
 
-          // 寶物相關統計 (無關日期過濾，統計歷史所有筆數)
           if (data.item_name && data.item_name !== "無") {
               if (data.status === "待售出") pendingCount++;
               if (data.payout_status === "未結清") unsettledCount++;
-              
-              // 💡 實收分紅總計 (只算已結清的，代表已入口袋)
               if (data.payout_status === "已結清" && data.my_dividend_billion > 0) {
                   totalDividend += data.my_dividend_billion;
               }
@@ -700,11 +781,8 @@
       tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">此範圍尚無紀錄</td></tr>';
   }
   
-  // 💡 當更改日期過濾條件時，同步更新表格與上方卡片
   document.getElementById("filter-week-routine").addEventListener("change", () => {
-      const b = getWeekBoundaries();
-      renderRoutineTable(b);
-      updateCharacterStats(b);
+      const b = getWeekBoundaries(); renderRoutineTable(b); updateCharacterStats(b);
   });
 
   function renderLootTable() {
@@ -722,8 +800,6 @@
       lootRecords.forEach(data => {
           let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
           let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
-          
-          // 💡 優化：單吃顯示「實收」，多人顯示「分紅」
           let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
 
           html += `
@@ -808,8 +884,12 @@
       const dividend = price > 0 ? (price / partySize).toFixed(2) : 0;
       const myCrystalIncome = ((bossCrystalPrices[boss] || 0) / partySize).toFixed(2); 
 
+      // 檢查是否為新掉寶並同步到雲端
       if (!defaultItemOptions.some(d => d.value === itemName)) {
-          let items = getCustomItems(); if(!items.includes(itemName)) { items.push(itemName); localStorage.setItem("ms_custom_items", JSON.stringify(items)); initItemSelect(); renderCustomItemList(); }
+          if(!userSettings.customItems.includes(itemName)) { 
+              userSettings.customItems.push(itemName); 
+              saveUserSettings(); initItemSelect(); renderCustomItemList(); 
+          }
       }
 
       const data = {
