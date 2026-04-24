@@ -27,7 +27,6 @@
 
         .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px 10px; overflow-x: auto; }
         
-        /* 限制任務清單的高度並開啟垂直滑動 */
         #weekly-tasks-container { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
         #weekly-tasks-container::-webkit-scrollbar { width: 6px; }
         #weekly-tasks-container::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
@@ -37,7 +36,6 @@
         .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; grid-auto-flow: column; width: max-content; }
         .heatmap-cell { width: 12px; height: 12px; border-radius: 2px; transition: 0.2s;}
         .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 10; position: relative;}
-        /* 歐洲熱力圖顏色：黃金/橘色系 */
         .hc-0 { background-color: #2c3e50; } 
         .hc-1 { background-color: #9e6f21; }
         .hc-2 { background-color: #d49a2a; }
@@ -50,17 +48,17 @@
         .nav-tabs .nav-link { color: #6c757d; font-weight: bold; border: none; border-bottom: 3px solid transparent; }
         .nav-tabs .nav-link.active { color: #2c3e50; background: none; border-bottom: 3px solid #3498db; }
 
+        /* 📱 手機版專屬樣式與修復 */
         @media (max-width: 768px) {
-            .sidebar { min-height: auto; position: sticky; top: 0; z-index: 1000; padding-top: 10px !important; padding-bottom: 0 !important; }
-            .sidebar h5 { display: none; } 
-            #character-list { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 2px solid #1a252f; }
-            #character-list::-webkit-scrollbar { display: none; }
-            .char-item { flex-shrink: 0; min-width: 140px; border-left: none !important; border-bottom: 4px solid transparent; padding: 10px 15px; }
-            .char-item.active { border-bottom: 4px solid #3498db !important; background-color: #2c3e50; }
-            .sidebar-bottom-actions { display: flex; }
-            .sidebar-bottom-actions a { flex: 1; text-align: center; background-color: #1a252f; border-bottom: 1px solid #34495e; padding: 10px;}
+            /* 隱藏原本的左側欄，讓位給 Offcanvas */
+            .desktop-sidebar { display: none !important; } 
+            
             .stat-card-wrapper { margin-bottom: 15px; }
+            .mobile-header { background-color: #1a252f; color: white; padding: 10px 15px; position: sticky; top: 0; z-index: 1020; display: flex; justify-content: space-between; align-items: center;}
+            .mobile-header h5 { margin: 0; font-size: 1.1rem; }
         }
+        /* 電腦版時隱藏手機頭部 */
+        @media (min-width: 769px) { .mobile-header { display: none; } }
     </style>
 </head>
 <body>
@@ -74,8 +72,26 @@
 </div>
 
 <div id="main-app" class="container-fluid" style="display: none;">
+    
+    <div class="mobile-header shadow-sm">
+        <h5 class="fw-bold"><span id="mobile-active-char">載入中...</span></h5>
+        <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            ☰ 選單
+        </button>
+    </div>
+
+    <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom border-secondary">
+            <h5 class="offcanvas-title" id="mobileSidebarLabel">收益管理系統</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0 d-flex flex-column">
+            <div id="mobile-sidebar-content" class="flex-grow-1"></div>
+        </div>
+    </div>
+
     <div class="row">
-        <div class="col-md-2 sidebar p-0 pt-3">
+        <div class="col-md-2 sidebar desktop-sidebar p-0 pt-3" id="desktop-sidebar">
             <h5 class="text-center mb-3 text-white">收益管理系統</h5>
             <div id="character-list"></div>
             
@@ -119,7 +135,7 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
-                <h3 class="mb-0 fw-bold"><span id="dashboard-title">角色名稱</span> <span class="fs-5 text-muted">收益管理</span></h3>
+                <h3 class="mb-0 fw-bold"><span id="dashboard-title">載入中...</span> <span class="fs-5 text-muted">收益管理</span></h3>
                 <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
                     📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
                 </span>
@@ -412,8 +428,9 @@
   let currentUserUid = null; 
   let bossSelectRoutine, bossSelectLoot, itemSelect; 
   
+  // 系統設定資料
   let userSettings = {
-      characters: ["新角色"],
+      characters: [],
       customItems: [],
       routineBosses: {},
       weeklyTasks: {}
@@ -437,7 +454,7 @@
   ];
 
   // ==========================================
-  // [核心邏輯] 雲端設定同步 (讀取與儲存)
+  // [💡 核心邏輯] 雲端設定同步
   // ==========================================
   async function loadUserSettings() {
       if(!currentUserUid) return;
@@ -445,19 +462,22 @@
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
           userSettings = docSnap.data();
-          if(!userSettings.characters || userSettings.characters.length === 0) userSettings.characters = ["新角色"];
+          if(!userSettings.characters || userSettings.characters.length === 0) userSettings.characters = ["我的本尊"];
           if(!userSettings.customItems) userSettings.customItems = [];
           if(!userSettings.routineBosses) userSettings.routineBosses = {};
           if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
       } else {
+          userSettings = { characters: ["我的本尊"], customItems: [], routineBosses: {}, weeklyTasks: {} };
           await saveUserSettings();
       }
       
-      activeChar = userSettings.characters[0] || "";
+      // 💡 確保取得雲端資料後，再指派 activeChar 並啟動渲染
+      activeChar = userSettings.characters[0];
+      
       initItemSelect(); 
       renderCustomItemList();
       renderSidebar();
-      loadRecords();
+      loadRecords(); // 💡 確保 activeChar 正確後才去撈資料
   }
 
   async function saveUserSettings() {
@@ -541,6 +561,7 @@
           document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
           document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
 
+          // 💡 登入成功後，先去雲端載入設定，載入完畢後才會去拉取 records
           await loadUserSettings();
           
       } else {
@@ -614,7 +635,10 @@
 
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
+      
+      // 💡 更新手機版的頂部標題
       document.getElementById("dashboard-title").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `${activeChar}`; 
+      document.getElementById("mobile-active-char").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `⚔️ ${activeChar}`; 
       
       userSettings.characters.forEach((charName, index) => {
           const a = document.createElement("a"); a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
@@ -622,10 +646,11 @@
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           
           textSpan.addEventListener("click", (e) => { 
-              e.preventDefault(); 
-              activeChar = charName; 
-              renderSidebar(); 
-              loadRecords(); 
+              e.preventDefault(); activeChar = charName; 
+              renderSidebar(); loadRecords(); 
+              // 手機版點擊後自動關閉 Offcanvas
+              const offcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('mobileSidebar'));
+              if(offcanvas) offcanvas.hide();
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
@@ -644,7 +669,69 @@
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
+      
       renderWeeklyTasks(); loadRoutineBosses(); 
+      
+      // 💡 複製內容給手機版 Offcanvas
+      document.getElementById("mobile-sidebar-content").innerHTML = document.getElementById("desktop-sidebar").innerHTML;
+      // 重新綁定手機版的點擊事件
+      rebindMobileSidebarEvents();
+  }
+  
+  // 💡 手機版 Offcanvas 事件重新綁定
+  function rebindMobileSidebarEvents() {
+      const mobileContainer = document.getElementById("mobile-sidebar-content");
+      
+      // 角色點擊
+      mobileContainer.querySelectorAll(".char-item").forEach((el, index) => {
+          const charName = userSettings.characters[index];
+          const textSpan = el.querySelector("span:first-child");
+          const editBtn = el.querySelector("span:last-child");
+          
+          textSpan.addEventListener("click", (e) => {
+              e.preventDefault(); activeChar = charName; renderSidebar(); loadRecords();
+              bootstrap.Offcanvas.getInstance(document.getElementById('mobileSidebar')).hide();
+          });
+          
+          editBtn.addEventListener("click", (e) => {
+              e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除)`, charName);
+              if (action === null) return; 
+              if (action.trim() === "") { 
+                  if (confirm(`確定刪除【${charName}】？`)) { 
+                      userSettings.characters.splice(index, 1); activeChar = userSettings.characters.length > 0 ? userSettings.characters[0] : ""; 
+                      saveUserSettings(); renderSidebar(); loadRecords(); 
+                  } 
+              } else { 
+                  userSettings.characters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); 
+                  saveUserSettings(); renderSidebar(); loadRecords(); 
+              }
+              bootstrap.Offcanvas.getInstance(document.getElementById('mobileSidebar')).hide();
+          });
+      });
+
+      // 任務打勾
+      mobileContainer.querySelectorAll(".task-checkbox").forEach(chk => { 
+          chk.addEventListener("change", (e) => { 
+              let savedData = userSettings.weeklyTasks[activeChar];
+              savedData.tasks[e.target.dataset.idx] = e.target.checked; 
+              saveUserSettings(); 
+              renderSidebar(); // 同步回電腦版 UI
+          }); 
+      });
+
+      // 底部按鈕
+      mobileContainer.querySelector("#btn-add-char").addEventListener("click", (e) => {
+          e.preventDefault(); const newChar = prompt("新角色名稱："); 
+          if (newChar && newChar.trim() !== "") { 
+              userSettings.characters.push(newChar.trim()); activeChar = newChar.trim(); 
+              saveUserSettings(); renderSidebar(); loadRecords(); 
+              bootstrap.Offcanvas.getInstance(document.getElementById('mobileSidebar')).hide();
+          } 
+      });
+      
+      mobileContainer.querySelector("#btn-logout").addEventListener("click", (e) => {
+          e.preventDefault(); if(confirm("確定登出？")) signOut(auth);
+      });
   }
   
   document.getElementById("btn-add-char").addEventListener("click", (e) => { 
@@ -656,26 +743,37 @@
   });
 
   function renderHeatmap(records) {
-      const heatmapGrid = document.getElementById("heatmap-grid"); heatmapGrid.innerHTML = "";
-      const today = new Date(); today.setHours(0,0,0,0);
-      let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
-      
-      let dateCounts = {};
-      records.forEach(r => { 
-          if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
-              dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
+      const renderTo = (containerId) => {
+          const heatmapGrid = document.getElementById(containerId); 
+          if(!heatmapGrid) return;
+          heatmapGrid.innerHTML = "";
+          const today = new Date(); today.setHours(0,0,0,0);
+          let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
+          
+          let dateCounts = {};
+          records.forEach(r => { 
+              if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
+                  dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
+              }
+          });
+          
+          let currDate = new Date(startDate);
+          while(currDate <= today) {
+              let dateStr = currDate.toISOString().split('T')[0]; let count = dateCounts[dateStr] || 0;
+              let cell = document.createElement("div"); cell.className = "heatmap-cell";
+              if(count === 0) cell.classList.add("hc-0"); else if(count <= 1) cell.classList.add("hc-1"); else if(count <= 2) cell.classList.add("hc-2"); else if(count <= 4) cell.classList.add("hc-3"); else cell.classList.add("hc-4");
+              cell.title = count > 0 ? `${dateStr} 掉落了 ${count} 個寶物！` : `${dateStr} 無掉寶`; 
+              heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
           }
-      });
+      };
+
+      renderTo("heatmap-grid"); // 渲染電腦版
       
-      let currDate = new Date(startDate);
-      while(currDate <= today) {
-          let dateStr = currDate.toISOString().split('T')[0]; let count = dateCounts[dateStr] || 0;
-          let cell = document.createElement("div"); cell.className = "heatmap-cell";
-          if(count === 0) cell.classList.add("hc-0"); else if(count <= 1) cell.classList.add("hc-1"); else if(count <= 2) cell.classList.add("hc-2"); else if(count <= 4) cell.classList.add("hc-3"); else cell.classList.add("hc-4");
-          cell.title = count > 0 ? `${dateStr} 掉落了 ${count} 個寶物！` : `${dateStr} 無掉寶`; 
-          heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
-      }
-      setTimeout(() => { document.querySelector('.heatmap-container').scrollLeft = 9999; }, 100);
+      // 手機版滑動處理
+      setTimeout(() => { 
+          const containers = document.querySelectorAll('.heatmap-container');
+          containers.forEach(c => c.scrollLeft = 9999);
+      }, 100);
   }
 
   // ==========================================
@@ -710,9 +808,9 @@
           document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
           
           renderHeatmap(records);
+          updateCharacterStats(boundaries); // 💡 強制更新 4 張卡片
           renderRoutineTable(boundaries);
           renderLootTable();
-          updateCharacterStats(boundaries);
 
       } catch (error) { console.error(error); }
   }
