@@ -22,7 +22,6 @@
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
         .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
 
-        /* 💡 統一側邊欄樣式 */
         @media (min-width: 768px) {
             .sidebar { position: fixed; top: 0; bottom: 0; left: 0; width: 260px; overflow-y: auto; z-index: 1000;}
             .main-content { margin-left: 260px; min-height: 100vh;}
@@ -35,10 +34,8 @@
 
         .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px; overflow-x: auto; }
         
-        /* 💡 限制任務清單的高度並開啟垂直滑動 */
         #weekly-tasks-container { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
         
-        /* 捲軸美化 */
         #weekly-tasks-container::-webkit-scrollbar, .sidebar-module::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
         #weekly-tasks-container::-webkit-scrollbar-thumb, .sidebar-module::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         
@@ -127,7 +124,13 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
-            <h3 class="mb-0 fw-bold"><span id="dashboard-title">載入中...</span> <span class="fs-5 text-muted">收益管理</span></h3>
+            <h3 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                <span id="dashboard-title">載入中...</span> 
+                <a id="btn-char-portal" href="#" target="_blank" class="btn btn-sm btn-outline-info d-none" style="border-radius: 20px;">
+                    🔍 查裝備
+                </a>
+                <span class="fs-5 text-muted">收益管理</span>
+            </h3>
             <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
                 📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
             </span>
@@ -435,9 +438,6 @@
       { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
-  // ==========================================
-  // [核心邏輯] 雲端設定同步
-  // ==========================================
   async function loadUserSettings() {
       if(!currentUserUid) return;
       const docRef = doc(db, "UserSettings", currentUserUid);
@@ -453,7 +453,14 @@
           await saveUserSettings();
       }
       
-      activeChar = userSettings.characters[0] || "";
+      // 💡 快取邏輯：從 localStorage 讀取最後一次選擇的角色
+      const savedChar = localStorage.getItem(`activeChar_${currentUserUid}`);
+      if (savedChar && userSettings.characters.includes(savedChar)) {
+          activeChar = savedChar;
+      } else {
+          activeChar = userSettings.characters[0] || "";
+      }
+
       initItemSelect(); 
       renderCustomItemList();
       renderSidebar();
@@ -467,9 +474,6 @@
       } catch(err) { console.error("設定儲存失敗", err); }
   }
 
-  // ==========================================
-  // [自訂掉寶管理]
-  // ==========================================
   function renderCustomItemList() {
       const list = document.getElementById("custom-item-list"); list.innerHTML = ""; 
       const items = userSettings.customItems;
@@ -505,9 +509,6 @@
       });
   }
 
-  // ==========================================
-  // [常規預設王表機制]
-  // ==========================================
   function loadRoutineBosses() {
       if(!bossSelectRoutine) return;
       bossSelectRoutine.setValue(userSettings.routineBosses[activeChar] || []);
@@ -521,9 +522,6 @@
       alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！`);
   });
 
-  // ==========================================
-  // [初始化與登入]
-  // ==========================================
   onAuthStateChanged(auth, async (user) => {
       if (user) {
           currentUserUid = user.uid; 
@@ -556,9 +554,6 @@
 
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
-  // ==========================================
-  // [時間計算]
-  // ==========================================
   function getWeekBoundaries() {
       const now = new Date(); const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
@@ -581,9 +576,6 @@
   }
   setInterval(updateCountdowns, 60000); updateCountdowns();
 
-  // ==========================================
-  // [側邊欄渲染：角色、任務、熱力圖]
-  // ==========================================
   function renderWeeklyTasks() {
       const container = document.getElementById("weekly-tasks-container"); container.innerHTML = "";
       if(!activeChar) return;
@@ -617,6 +609,15 @@
       
       document.getElementById("dashboard-title").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `${activeChar}`; 
       document.getElementById("mobile-active-char").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `⚔️ ${activeChar}`; 
+
+      // 💡 傳送門連動邏輯：更新按鈕的 href 並根據角色是否存在顯示/隱藏
+      const portalBtn = document.getElementById("btn-char-portal");
+      if (activeChar && userSettings.characters.length > 0) {
+          portalBtn.href = `https://msapi.misaka-site.co/search/character?name=${encodeURIComponent(activeChar)}`;
+          portalBtn.classList.remove("d-none");
+      } else {
+          portalBtn.classList.add("d-none");
+      }
       
       userSettings.characters.forEach((charName, index) => {
           const a = document.createElement("a"); a.href = "#"; a.className = "d-flex justify-content-between align-items-center char-item";
@@ -625,9 +626,12 @@
           
           textSpan.addEventListener("click", (e) => { 
               e.preventDefault(); activeChar = charName; 
+              
+              // 切換角色時更新快取記憶
+              localStorage.setItem(`activeChar_${currentUserUid}`, activeChar); 
+              
               renderSidebar(); loadRecords(); 
               
-              // 💡 關閉手機版選單防呆
               const offcanvasEl = document.getElementById('sidebarMenu');
               if (offcanvasEl.classList.contains('show')) {
                   bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
@@ -640,11 +644,21 @@
               if (action === null) return; 
               if (action.trim() === "") { 
                   if (confirm(`確定刪除【${charName}】？`)) { 
-                      userSettings.characters.splice(index, 1); activeChar = userSettings.characters.length > 0 ? userSettings.characters[0] : ""; 
+                      userSettings.characters.splice(index, 1); 
+                      activeChar = userSettings.characters.length > 0 ? userSettings.characters[0] : ""; 
+                      
+                      // 刪除角色後更新快取記憶
+                      localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
+                      
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
-                  userSettings.characters[index] = action.trim(); if (activeChar === charName) activeChar = action.trim(); 
+                  userSettings.characters[index] = action.trim(); 
+                  if (activeChar === charName) {
+                      activeChar = action.trim(); 
+                      // 修改角色名稱後更新快取記憶
+                      localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
+                  }
                   saveUserSettings(); renderSidebar(); loadRecords(); 
               }
           });
@@ -653,11 +667,20 @@
       renderWeeklyTasks(); loadRoutineBosses(); 
   }
   
-  // 💡 修復綁定：統一綁定單一的按鈕 (電腦/手機共用 DOM)
   document.getElementById("btn-add-char").addEventListener("click", (e) => { 
       e.preventDefault(); const newChar = prompt("新角色名稱："); 
       if (newChar && newChar.trim() !== "") { 
-          userSettings.characters.push(newChar.trim()); activeChar = newChar.trim(); 
+          const charName = newChar.trim();
+          
+          // 防呆機制：避免加入重複角色
+          if (!userSettings.characters.includes(charName)) {
+              userSettings.characters.push(charName); 
+          }
+          activeChar = charName; 
+          
+          // 新增角色後直接寫入快取記憶
+          localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
+          
           saveUserSettings(); renderSidebar(); loadRecords(); 
           const offcanvasEl = document.getElementById('sidebarMenu');
           if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
@@ -691,9 +714,6 @@
       }, 100);
   }
 
-  // ==========================================
-  // [核心讀取與雙表格渲染]
-  // ==========================================
   async function loadRecords() {
       if(!currentUserUid) return;
       try {
@@ -840,9 +860,6 @@
       tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">目前寶物庫空空如也</td></tr>';
   }
 
-  // ==========================================
-  // [儲存邏輯 1：常規打卡]
-  // ==========================================
   const saveBtnRoutine = document.getElementById("btn-save-routine"); const cancelEditRoutineBtn = document.getElementById("btn-cancel-edit-routine");
   saveBtnRoutine.addEventListener("click", async () => {
       const recordDate = document.getElementById("input-date-routine").value;
@@ -883,9 +900,6 @@
       document.getElementById("form-title-routine").innerText = "新增常規討伐"; saveBtnRoutine.innerText = "💾 儲存紀錄"; saveBtnRoutine.classList.replace("btn-primary", "btn-dark"); cancelEditRoutineBtn.classList.add("d-none"); saveBtnRoutine.disabled = false;
   }
 
-  // ==========================================
-  // [儲存邏輯 2：掉寶帳務]
-  // ==========================================
   const saveBtnLoot = document.getElementById("btn-save-loot"); const cancelEditLootBtn = document.getElementById("btn-cancel-edit-loot");
   saveBtnLoot.addEventListener("click", async () => {
       const recordDate = document.getElementById("input-date-loot").value;
@@ -929,9 +943,6 @@
       document.getElementById("form-title-loot").innerText = "新增掉寶紀錄"; saveBtnLoot.innerText = "💾 儲存掉寶"; cancelEditLootBtn.classList.add("d-none"); saveBtnLoot.disabled = false;
   }
 
-  // ==========================================
-  // [編輯與刪除]
-  // ==========================================
   document.addEventListener("click", async (e) => {
       const btnDel = e.target.closest(".btn-delete-record");
       if (btnDel && confirm("確定刪除此紀錄？")) { await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); loadRecords(); return; }
@@ -970,9 +981,6 @@
       }
   });
 
-  // ==========================================
-  // [對帳單複製]
-  // ==========================================
   document.getElementById("btn-copy-line").addEventListener("click", () => {
       let drops = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無" && (d.status === "待售出" || d.payout_status === "未結清"));
       if(drops.length === 0){ alert("目前沒有未結清的寶物帳務。"); return; }
