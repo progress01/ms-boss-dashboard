@@ -30,15 +30,19 @@
         .char-item:hover, .char-item.active { background-color: #2c3e50 !important; color: #3498db !important; border-left: 4px solid #3498db !important; }
         .sidebar-action { display: block; padding: 15px 20px; text-decoration: none; border-bottom: 1px solid #34495e; cursor: pointer; transition: 0.2s; font-weight: bold;}
         .sidebar-action:hover { background-color: #2c3e50; }
-        .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px; overflow-x: auto; }
+        .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px;}
         
         #weekly-tasks-container { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
-        #weekly-tasks-container::-webkit-scrollbar, .sidebar-module::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
-        #weekly-tasks-container::-webkit-scrollbar-thumb, .sidebar-module::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
+        #weekly-tasks-container::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
+        #weekly-tasks-container::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         
-        .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; grid-auto-flow: column; width: max-content; }
-        .heatmap-cell { width: 12px; height: 12px; border-radius: 2px; transition: 0.2s;}
-        .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 10; position: relative;}
+        /* 💡 熱力圖專屬美化 */
+        .heatmap-container { overflow-x: auto; padding-bottom: 8px; }
+        .heatmap-container::-webkit-scrollbar { height: 5px; }
+        .heatmap-container::-webkit-scrollbar-thumb { background: #34495e; border-radius: 4px; }
+        .heatmap-grid { display: grid; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; grid-auto-flow: column; gap: 3px; width: max-content; }
+        .heatmap-cell { width: 100%; height: 100%; border-radius: 2px; transition: 0.2s;}
+        .heatmap-cell:hover { transform: scale(1.3); box-shadow: 0 0 5px rgba(0,0,0,0.8); z-index: 10; position: relative;}
         .hc-0 { background-color: #2c3e50; } 
         .hc-1 { background-color: #9e6f21; }
         .hc-2 { background-color: #d49a2a; }
@@ -96,7 +100,9 @@
 
             <div class="sidebar-module mt-2 mb-4">
                 <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✨ 掉寶歐洲度 (近16週)</h6>
-                <div class="heatmap-grid" id="heatmap-grid"></div>
+                <div class="heatmap-container">
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                </div>
             </div>
 
             <div class="mt-auto d-flex flex-column border-top border-secondary">
@@ -110,20 +116,36 @@
     <div class="main-content p-4">
         
         <div class="card card-custom bg-white p-3 mb-3 shadow-sm border-0 border-start border-5 border-dark">
+            <div class="row align-items-center mb-3 border-bottom pb-3">
+                <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <h5 class="fw-bold mb-0">🌐 帳號總覽 <span class="text-muted fs-6">Account Overview</span></h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <select id="overview-quick-range" class="form-select form-select-sm w-auto shadow-sm">
+                            <option value="this_week">本週週期 (四~三)</option>
+                            <option value="last_week">上週週期</option>
+                            <option value="this_month">本月</option>
+                            <option value="all">累計全部</option>
+                            <option value="custom">自訂區間...</option>
+                        </select>
+                        <input type="date" id="overview-start-date" class="form-control form-control-sm w-auto d-none shadow-sm">
+                        <span id="overview-date-separator" class="d-none text-muted">~</span>
+                        <input type="date" id="overview-end-date" class="form-control form-control-sm w-auto d-none shadow-sm">
+                    </div>
+                </div>
+            </div>
             <div class="row align-items-center">
-                <div class="col-md-4 mb-2 mb-md-0">
-                    <h5 class="fw-bold mb-1">🌐 帳號總覽 <span class="text-muted fs-6">Account Overview</span></h5>
-                    <div class="d-flex gap-2 mt-2">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="d-flex gap-2">
                         <span class="badge bg-secondary">週王重置：<span id="reset-timer-week"></span></span>
                         <span class="badge bg-dark">黑魔重置：<span id="reset-timer-month"></span></span>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="text-muted" style="font-size:0.85rem;">本週全帳號總結晶</div>
+                <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="text-muted" style="font-size:0.85rem;">區間內全帳號總結晶</div>
                     <h4 class="crystal-text mb-0" id="account-total-crystal">0 億</h4>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-muted" style="font-size:0.85rem;">全帳號已結清分紅 (累計)</div>
+                    <div class="text-muted" style="font-size:0.85rem;">區間內全帳號已結清分紅</div>
                     <h4 class="text-success mb-0 fw-bold" id="account-total-settled">0 億</h4>
                 </div>
             </div>
@@ -138,7 +160,7 @@
                 <span class="fs-5 text-muted d-none d-md-inline">收益管理</span>
             </h3>
             <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
-                📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
+                📊 本週打卡：<span id="weekly-limit-count">0</span> / 12 隻
             </span>
         </div>
 
@@ -427,7 +449,6 @@
   let currentUserUid = null; 
   let bossSelectRoutine, bossSelectLoot, itemSelect; 
   
-  // 核心資料結構
   let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {} };
   let activeChar = ""; 
   let currentRecordsData = [];
@@ -445,27 +466,19 @@
       { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
-  // ==========================================
-  // [UI 狀態切換器]
-  // ==========================================
   function showScreen(screen) {
       loginScreen.style.display = "none";
       onboardingScreen.style.display = "none";
       mainApp.style.display = "none";
-      
       if (screen === 'login') loginScreen.style.display = "flex";
       if (screen === 'onboarding') onboardingScreen.style.display = "flex";
       if (screen === 'dashboard') mainApp.style.display = "block";
   }
 
-  // ==========================================
-  // [初始化載入與路由判定]
-  // ==========================================
   async function loadUserSettings() {
       if(!currentUserUid) return;
       const docRef = doc(db, "UserSettings", currentUserUid);
       const docSnap = await getDoc(docRef);
-      
       if (docSnap.exists()) {
           let data = docSnap.data();
           if (data.characters && data.characters.length > 0) {
@@ -497,6 +510,12 @@
       initItemSelect(); 
       renderCustomItemList();
       renderSidebar();
+      
+      // 初始化自訂日期的預設值為本月，避免點擊自訂時出現空值
+      const today = new Date();
+      document.getElementById("overview-start-date").value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+      document.getElementById("overview-end-date").value = today.toISOString().split('T')[0];
+
       loadRecords();
   }
 
@@ -507,35 +526,15 @@
       } catch(err) { console.error("設定儲存失敗", err); }
   }
 
-  // ==========================================
-  // [Onboarding 流程]
-  // ==========================================
   document.getElementById("btn-start-journey").addEventListener("click", async () => {
       const input = document.getElementById("input-first-char");
       const charName = input.value.trim();
-      
-      if (!charName) {
-          alert("請輸入角色名稱才能開始使用喔！");
-          input.focus();
-          return;
-      }
-      
-      userSettings.characters = [charName];
-      userSettings.lastActiveChar = charName;
-      activeChar = charName;
-      
-      await saveUserSettings();
-      initDashboard();
+      if (!charName) { alert("請輸入角色名稱才能開始使用喔！"); input.focus(); return; }
+      userSettings.characters = [charName]; userSettings.lastActiveChar = charName; activeChar = charName;
+      await saveUserSettings(); initDashboard();
   });
+  document.getElementById("input-first-char").addEventListener("keypress", (e) => { if (e.key === "Enter") document.getElementById("btn-start-journey").click(); });
 
-  document.getElementById("input-first-char").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") document.getElementById("btn-start-journey").click();
-  });
-
-
-  // ==========================================
-  // [主系統邏輯]
-  // ==========================================
   function renderCustomItemList() {
       const list = document.getElementById("custom-item-list"); list.innerHTML = ""; 
       const items = userSettings.customItems;
@@ -549,8 +548,7 @@
   document.getElementById("btn-add-custom-item").addEventListener("click", () => {
       const val = document.getElementById("input-custom-item").value.trim();
       if(val && !userSettings.customItems.includes(val)) {
-          userSettings.customItems.push(val); 
-          saveUserSettings();
+          userSettings.customItems.push(val); saveUserSettings();
           document.getElementById("input-custom-item").value = ""; 
           renderCustomItemList(); initItemSelect(); 
       }
@@ -577,10 +575,8 @@
   }
 
   document.getElementById("btn-save-routine-preset").addEventListener("click", (e) => {
-      e.preventDefault();
-      let selected = bossSelectRoutine.getValue(); 
-      userSettings.routineBosses[activeChar] = selected; 
-      saveUserSettings();
+      e.preventDefault(); let selected = bossSelectRoutine.getValue(); 
+      userSettings.routineBosses[activeChar] = selected; saveUserSettings();
       alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！`);
   });
 
@@ -588,18 +584,15 @@
       if (user) {
           currentUserUid = user.uid; 
           document.getElementById("user-name").innerText = user.displayName;
-          
           if (!bossSelectRoutine) {
               const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
               document.getElementById("input-boss-routine").innerHTML = optionsHtml;
               document.getElementById("input-boss-loot").innerHTML = optionsHtml;
-              
               bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)..." });
               bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標..." });
           }
           document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
           document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
-
           await loadUserSettings();
       } else {
           currentUserUid = null; showScreen('login'); 
@@ -607,9 +600,7 @@
   });
 
   document.getElementById("btn-login").addEventListener("click", () => {
-      signInWithPopup(auth, provider).catch(error => {
-          console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。");
-      });
+      signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); });
   });
 
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
@@ -657,10 +648,7 @@
           container.appendChild(div);
       });
       document.querySelectorAll(".task-checkbox").forEach(chk => { 
-          chk.addEventListener("change", (e) => { 
-              savedData.tasks[e.target.dataset.idx] = e.target.checked; 
-              saveUserSettings(); 
-          }); 
+          chk.addEventListener("change", (e) => { savedData.tasks[e.target.dataset.idx] = e.target.checked; saveUserSettings(); }); 
       });
   }
 
@@ -682,12 +670,8 @@
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           
           textSpan.addEventListener("click", (e) => { 
-              e.preventDefault(); 
-              activeChar = charName; 
-              userSettings.lastActiveChar = activeChar; 
-              saveUserSettings();
+              e.preventDefault(); activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
               renderSidebar(); loadRecords(); 
-              
               const offcanvasEl = document.getElementById('sidebarMenu');
               if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
           });
@@ -699,24 +683,16 @@
               if (action.trim() === "") { 
                   if (confirm(`確定刪除【${charName}】？`)) { 
                       userSettings.characters.splice(index, 1); 
-                      
                       if (userSettings.characters.length === 0) {
-                          userSettings.lastActiveChar = "";
-                          saveUserSettings();
-                          showScreen('onboarding');
-                          return;
+                          userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
                       } else {
-                          activeChar = userSettings.characters[0];
-                          userSettings.lastActiveChar = activeChar;
+                          activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar;
                       }
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
                   userSettings.characters[index] = action.trim(); 
-                  if (activeChar === charName) {
-                      activeChar = action.trim(); 
-                      userSettings.lastActiveChar = activeChar;
-                  }
+                  if (activeChar === charName) { activeChar = action.trim(); userSettings.lastActiveChar = activeChar; }
                   saveUserSettings(); renderSidebar(); loadRecords(); 
               }
           });
@@ -729,14 +705,8 @@
       e.preventDefault(); const newChar = prompt("新角色名稱："); 
       if (newChar && newChar.trim() !== "") { 
           const charName = newChar.trim();
-          
-          if (!userSettings.characters.includes(charName)) {
-              userSettings.characters.push(charName); 
-          }
-          activeChar = charName; 
-          userSettings.lastActiveChar = activeChar; 
-          saveUserSettings(); 
-          
+          if (!userSettings.characters.includes(charName)) { userSettings.characters.push(charName); }
+          activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings(); 
           renderSidebar(); loadRecords(); 
           const offcanvasEl = document.getElementById('sidebarMenu');
           if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
@@ -765,10 +735,70 @@
           cell.title = count > 0 ? `${dateStr} 掉落了 ${count} 個寶物！` : `${dateStr} 無掉寶`; 
           heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
+      
+      // 💡 修改後：確實選中 container 並滑動到底
       setTimeout(() => { 
-          document.querySelectorAll('.heatmap-container').forEach(c => c.scrollLeft = 9999);
+          const container = document.querySelector('.heatmap-container');
+          if(container) container.scrollLeft = container.scrollWidth;
       }, 100);
   }
+
+  // 💡 新增的 GA 模式帳號總覽結算器
+  function updateAccountOverview() {
+      const rangeType = document.getElementById("overview-quick-range").value;
+      const startDateInput = document.getElementById("overview-start-date");
+      const endDateInput = document.getElementById("overview-end-date");
+      const separator = document.getElementById("overview-date-separator");
+
+      let start, end;
+      const boundaries = getWeekBoundaries();
+      const now = new Date();
+
+      if (rangeType === "custom") {
+          startDateInput.classList.remove("d-none"); endDateInput.classList.remove("d-none"); separator.classList.remove("d-none");
+          start = new Date(startDateInput.value + "T00:00:00");
+          end = new Date(endDateInput.value + "T23:59:59");
+      } else {
+          startDateInput.classList.add("d-none"); endDateInput.classList.add("d-none"); separator.classList.add("d-none");
+          if (rangeType === "this_week") {
+              start = boundaries.thisWeekStart; end = new Date(); end.setHours(23, 59, 59, 999);
+          } else if (rangeType === "last_week") {
+              start = boundaries.lastWeekStart; end = new Date(boundaries.thisWeekStart); end.setTime(end.getTime() - 1);
+          } else if (rangeType === "this_month") {
+              start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+          } else if (rangeType === "all") {
+              start = new Date(0); end = new Date("2100-01-01");
+          }
+      }
+
+      let accountCrystal = 0; let accountDividend = 0; let charWeeklyCount = 0;
+
+      currentRecordsData.forEach(data => {
+          const rd = new Date(data.date + "T00:00:00");
+
+          // 全帳號加總邏輯：套用 GA 日期篩選
+          if (rd >= start && rd <= end) {
+              accountCrystal += data.crystal_income_billion || 0;
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
+                  accountDividend += data.my_dividend_billion;
+              }
+          }
+          // 個人週打卡邏輯：永遠只看「本週四~下週三」
+          if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
+              charWeeklyCount++;
+          }
+      });
+
+      document.getElementById("account-total-crystal").innerText = accountCrystal.toFixed(2) + " 億";
+      document.getElementById("account-total-settled").innerText = accountDividend.toFixed(2) + " 億";
+      document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
+      document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
+  }
+
+  // 綁定 GA 模式篩選器的事件
+  document.getElementById("overview-quick-range").addEventListener("change", updateAccountOverview);
+  document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
+  document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
 
   async function loadRecords() {
       if(!currentUserUid) return;
@@ -777,27 +807,14 @@
           const querySnapshot = await getDocs(q);
           
           let records = []; const boundaries = getWeekBoundaries();
-          let accountWeeklyCrystal = 0; let accountSettledDividend = 0; 
-          let charWeeklyCount = 0; 
-
           querySnapshot.forEach((doc) => { 
-              let data = doc.data(); data.id = doc.id; 
-              records.push(data); 
-
-              if (new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) accountWeeklyCrystal += data.crystal_income_billion || 0;
-              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
-                  accountSettledDividend += data.my_dividend_billion;
-              }
-              if (data.character_name === activeChar && new Date(data.date + "T00:00:00") >= boundaries.thisWeekStart) charWeeklyCount++;
+              let data = doc.data(); data.id = doc.id; records.push(data); 
           });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
           
-          document.getElementById("account-total-crystal").innerText = accountWeeklyCrystal.toFixed(2) + " 億";
-          document.getElementById("account-total-settled").innerText = accountSettledDividend.toFixed(2) + " 億";
-          document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
-          document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
-          
+          // 💡 更新 UI
+          updateAccountOverview(); // 呼叫 GA 篩選器重新結算
           renderHeatmap(records);
           updateCharacterStats(boundaries);
           renderRoutineTable(boundaries);
