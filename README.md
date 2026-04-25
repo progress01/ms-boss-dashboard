@@ -1,6 +1,6 @@
 # 楓之谷收益管理
 
-基於 Serverless 架構開發的網頁單頁應用程式（SPA），專為《新楓之谷》玩家設計的 Boss 討伐與收益追蹤儀表板。系統提供角色狀態管理、自動化收益計算、分帳狀態追蹤、以及跨裝置的雲端資料同步功能。
+基於 Serverless 架構開發的網頁單頁應用程式（SPA），供《新楓之谷》玩家使用的 Boss 討伐與收益追蹤儀表板。系統提供角色狀態管理、自動化收益計算、分帳狀態追蹤、以及跨裝置的雲端資料同步功能。
 參考網址：[https://progress01.github.io/ms-boss-dashboard/](https://progress01.github.io/ms-boss-dashboard/)
 
 ## 🔹 核心功能
