@@ -20,8 +20,7 @@
         .crystal-text { color: #2980b9; font-weight: bold; }
         .dividend-text { color: #27ae60; font-weight: bold; }
         .badge-battle { background-color: #f1f2f6; color: #2f3542; font-size: 0.8em; padding: 4px 8px; border-radius: 4px; border: 1px solid #dfe4ea; margin-top: 4px; display: inline-block;}
-        .memo-text { font-size: 0.85em; color: #6c757d; margin-top: 4px; display: block; }
-
+        
         @media (min-width: 768px) {
             .sidebar { position: fixed; top: 0; bottom: 0; left: 0; width: 260px; overflow-y: auto; z-index: 1000;}
             .main-content { margin-left: 260px; min-height: 100vh;}
@@ -31,11 +30,9 @@
         .char-item:hover, .char-item.active { background-color: #2c3e50 !important; color: #3498db !important; border-left: 4px solid #3498db !important; }
         .sidebar-action { display: block; padding: 15px 20px; text-decoration: none; border-bottom: 1px solid #34495e; cursor: pointer; transition: 0.2s; font-weight: bold;}
         .sidebar-action:hover { background-color: #2c3e50; }
-
         .sidebar-module { background-color: #141d26; border-radius: 8px; padding: 12px; margin: 15px; overflow-x: auto; }
         
         #weekly-tasks-container { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
-        
         #weekly-tasks-container::-webkit-scrollbar, .sidebar-module::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
         #weekly-tasks-container::-webkit-scrollbar-thumb, .sidebar-module::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         
@@ -65,6 +62,15 @@
     </button>
 </div>
 
+<div id="onboarding-screen" class="container-fluid" style="display: none; height: 100vh; background-color: #1a252f; flex-direction: column; justify-content: center; align-items: center;">
+    <div class="card p-5 shadow-lg" style="max-width: 450px; width: 90%; border-radius: 16px; border: none;">
+        <h3 class="text-center mb-3 fw-bold text-dark">👋 歡迎來到收益系統</h3>
+        <p class="text-muted text-center mb-4">系統偵測到您尚未建立任何角色。<br>請先輸入您的主要角色名稱，以啟用專屬儀表板。</p>
+        <input type="text" id="input-first-char" class="form-control form-control-lg mb-4 text-center" placeholder="例如：夜使者本尊" autocomplete="off">
+        <button id="btn-start-journey" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">🚀 建立並進入系統</button>
+    </div>
+</div>
+
 <div id="main-app" style="display: none;">
     
     <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center sticky-top shadow-sm z-3">
@@ -76,7 +82,7 @@
 
     <div class="offcanvas-md offcanvas-start sidebar d-flex flex-column" tabindex="-1" id="sidebarMenu" style="background-color: #1a252f; color: white;">
         <div class="offcanvas-header d-md-none border-bottom border-secondary">
-            <h5 class="offcanvas-title fw-bold text-white">收益管理系統</h5>
+            <h5 class="offcanvas-title fw-bold text-white">收益管理</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body d-flex flex-column p-0 flex-grow-1">
@@ -129,7 +135,7 @@
                 <a id="btn-char-portal" href="#" target="_blank" class="btn btn-sm btn-outline-info d-none" style="border-radius: 20px;">
                     🔍 查裝備
                 </a>
-                <span class="fs-5 text-muted">收益管理</span>
+                <span class="fs-5 text-muted d-none d-md-inline">收益管理</span>
             </h3>
             <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
                 📊 本週進度：<span id="weekly-limit-count">0</span> / 12 隻
@@ -145,7 +151,7 @@
             </div>
             <div class="col-6 col-md-3 stat-card-wrapper">
                 <div class="card card-custom p-3 bg-white border-start border-success border-4">
-                    <h6 class="text-muted">✨ 已結清分紅總計</h6>
+                    <h6 class="text-muted">✨ 已結清分紅</h6>
                     <h3 class="dividend-text" id="stat-drop">0 億</h3>
                 </div>
             </div>
@@ -173,7 +179,6 @@
         </ul>
 
         <div class="tab-content" id="myTabContent">
-            
             <div class="tab-pane fade show active" id="routine-pane" role="tabpanel" tabindex="0">
                 <div class="row">
                     <div class="col-12 col-lg-4 mb-4">
@@ -422,11 +427,13 @@
   let currentUserUid = null; 
   let bossSelectRoutine, bossSelectLoot, itemSelect; 
   
-  let userSettings = { characters: [], customItems: [], routineBosses: {}, weeklyTasks: {} };
+  // 核心資料結構
+  let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {} };
   let activeChar = ""; 
   let currentRecordsData = [];
 
   const loginScreen = document.getElementById("login-screen");
+  const onboardingScreen = document.getElementById("onboarding-screen");
   const mainApp = document.getElementById("main-app");
 
   const bossCrystalPrices = { "終極黑魔法師": 30.0, "終極瑪麗西亞": 15.0, "終極咖凌": 14.433, "終極最初的敵對者": 13.44, "終極監視者卡洛斯": 12.371, "終極受選的賽蓮": 7.242, "終極史烏": 3.235, "困難黑魔法師": 9.908, "困難巴德利斯": 8.4, "困難林波": 7.49, "困難咖凌": 7.211, "困難最初的敵對者": 6.82, "混沌監視者卡洛斯": 6.188, "困難受選的賽蓮": 2.716, "困難真希拉": 1.452, "困難威爾": 1.274, "混沌守護天使綠水靈": 1.265, "困難頓凱爾": 1.262, "混沌戴斯克": 1.112, "困難露希妲": 1.024, "困難史烏": 0.919, "困難戴米安": 0.857, "普通監視者卡洛斯": 3.09, "普通瑪麗西亞": 1.5, "普通受選的賽蓮": 1.498 };
@@ -438,29 +445,55 @@
       { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
+  // ==========================================
+  // [UI 狀態切換器]
+  // ==========================================
+  function showScreen(screen) {
+      loginScreen.style.display = "none";
+      onboardingScreen.style.display = "none";
+      mainApp.style.display = "none";
+      
+      if (screen === 'login') loginScreen.style.display = "flex";
+      if (screen === 'onboarding') onboardingScreen.style.display = "flex";
+      if (screen === 'dashboard') mainApp.style.display = "block";
+  }
+
+  // ==========================================
+  // [初始化載入與路由判定]
+  // ==========================================
   async function loadUserSettings() {
       if(!currentUserUid) return;
       const docRef = doc(db, "UserSettings", currentUserUid);
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-          userSettings = docSnap.data();
-          if(!userSettings.characters || userSettings.characters.length === 0) userSettings.characters = ["我的本尊"];
-          if(!userSettings.customItems) userSettings.customItems = [];
-          if(!userSettings.routineBosses) userSettings.routineBosses = {};
-          if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
-      } else {
-          userSettings = { characters: ["我的本尊"], customItems: [], routineBosses: {}, weeklyTasks: {} };
-          await saveUserSettings();
-      }
       
-      // 💡 快取邏輯：從 localStorage 讀取最後一次選擇的角色
-      const savedChar = localStorage.getItem(`activeChar_${currentUserUid}`);
-      if (savedChar && userSettings.characters.includes(savedChar)) {
-          activeChar = savedChar;
+      if (docSnap.exists()) {
+          let data = docSnap.data();
+          if (data.characters && data.characters.length > 0) {
+              userSettings = data;
+              if(!userSettings.customItems) userSettings.customItems = [];
+              if(!userSettings.routineBosses) userSettings.routineBosses = {};
+              if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
+              
+              if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
+                  activeChar = userSettings.lastActiveChar;
+              } else {
+                  activeChar = userSettings.characters[0];
+                  userSettings.lastActiveChar = activeChar;
+                  saveUserSettings(); 
+              }
+              initDashboard();
+          } else {
+              userSettings = { characters: [], lastActiveChar: "", customItems: data.customItems || [], routineBosses: {}, weeklyTasks: {} };
+              showScreen('onboarding');
+          }
       } else {
-          activeChar = userSettings.characters[0] || "";
+          userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {} };
+          showScreen('onboarding');
       }
+  }
 
+  function initDashboard() {
+      showScreen('dashboard');
       initItemSelect(); 
       renderCustomItemList();
       renderSidebar();
@@ -474,6 +507,35 @@
       } catch(err) { console.error("設定儲存失敗", err); }
   }
 
+  // ==========================================
+  // [Onboarding 流程]
+  // ==========================================
+  document.getElementById("btn-start-journey").addEventListener("click", async () => {
+      const input = document.getElementById("input-first-char");
+      const charName = input.value.trim();
+      
+      if (!charName) {
+          alert("請輸入角色名稱才能開始使用喔！");
+          input.focus();
+          return;
+      }
+      
+      userSettings.characters = [charName];
+      userSettings.lastActiveChar = charName;
+      activeChar = charName;
+      
+      await saveUserSettings();
+      initDashboard();
+  });
+
+  document.getElementById("input-first-char").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") document.getElementById("btn-start-journey").click();
+  });
+
+
+  // ==========================================
+  // [主系統邏輯]
+  // ==========================================
   function renderCustomItemList() {
       const list = document.getElementById("custom-item-list"); list.innerHTML = ""; 
       const items = userSettings.customItems;
@@ -526,7 +588,6 @@
       if (user) {
           currentUserUid = user.uid; 
           document.getElementById("user-name").innerText = user.displayName;
-          loginScreen.style.display = "none"; mainApp.style.display = "block"; 
           
           if (!bossSelectRoutine) {
               const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
@@ -540,9 +601,8 @@
           document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
 
           await loadUserSettings();
-          
       } else {
-          currentUserUid = null; loginScreen.style.display = "flex"; mainApp.style.display = "none"; 
+          currentUserUid = null; showScreen('login'); 
       }
   });
 
@@ -607,16 +667,13 @@
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
       
-      document.getElementById("dashboard-title").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `${activeChar}`; 
-      document.getElementById("mobile-active-char").innerText = userSettings.characters.length === 0 ? `請先新增角色` : `⚔️ ${activeChar}`; 
+      document.getElementById("dashboard-title").innerText = activeChar; 
+      document.getElementById("mobile-active-char").innerText = `⚔️ ${activeChar}`; 
 
-      // 💡 傳送門連動邏輯：更新按鈕的 href 並根據角色是否存在顯示/隱藏
       const portalBtn = document.getElementById("btn-char-portal");
-      if (activeChar && userSettings.characters.length > 0) {
+      if (activeChar) {
           portalBtn.href = `https://msapi.misaka-site.co/search/character?name=${encodeURIComponent(activeChar)}`;
           portalBtn.classList.remove("d-none");
-      } else {
-          portalBtn.classList.add("d-none");
       }
       
       userSettings.characters.forEach((charName, index) => {
@@ -625,17 +682,14 @@
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           
           textSpan.addEventListener("click", (e) => { 
-              e.preventDefault(); activeChar = charName; 
-              
-              // 切換角色時更新快取記憶
-              localStorage.setItem(`activeChar_${currentUserUid}`, activeChar); 
-              
+              e.preventDefault(); 
+              activeChar = charName; 
+              userSettings.lastActiveChar = activeChar; 
+              saveUserSettings();
               renderSidebar(); loadRecords(); 
               
               const offcanvasEl = document.getElementById('sidebarMenu');
-              if (offcanvasEl.classList.contains('show')) {
-                  bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
-              }
+              if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
@@ -645,19 +699,23 @@
               if (action.trim() === "") { 
                   if (confirm(`確定刪除【${charName}】？`)) { 
                       userSettings.characters.splice(index, 1); 
-                      activeChar = userSettings.characters.length > 0 ? userSettings.characters[0] : ""; 
                       
-                      // 刪除角色後更新快取記憶
-                      localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
-                      
+                      if (userSettings.characters.length === 0) {
+                          userSettings.lastActiveChar = "";
+                          saveUserSettings();
+                          showScreen('onboarding');
+                          return;
+                      } else {
+                          activeChar = userSettings.characters[0];
+                          userSettings.lastActiveChar = activeChar;
+                      }
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
                   userSettings.characters[index] = action.trim(); 
                   if (activeChar === charName) {
                       activeChar = action.trim(); 
-                      // 修改角色名稱後更新快取記憶
-                      localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
+                      userSettings.lastActiveChar = activeChar;
                   }
                   saveUserSettings(); renderSidebar(); loadRecords(); 
               }
@@ -672,16 +730,14 @@
       if (newChar && newChar.trim() !== "") { 
           const charName = newChar.trim();
           
-          // 防呆機制：避免加入重複角色
           if (!userSettings.characters.includes(charName)) {
               userSettings.characters.push(charName); 
           }
           activeChar = charName; 
+          userSettings.lastActiveChar = activeChar; 
+          saveUserSettings(); 
           
-          // 新增角色後直接寫入快取記憶
-          localStorage.setItem(`activeChar_${currentUserUid}`, activeChar);
-          
-          saveUserSettings(); renderSidebar(); loadRecords(); 
+          renderSidebar(); loadRecords(); 
           const offcanvasEl = document.getElementById('sidebarMenu');
           if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
       } 
