@@ -36,7 +36,6 @@
         #weekly-tasks-container::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
         #weekly-tasks-container::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: #2c3e50; border-radius: 4px; }
         
-        /* 💡 熱力圖專屬美化 */
         .heatmap-container { overflow-x: auto; padding-bottom: 8px; }
         .heatmap-container::-webkit-scrollbar { height: 5px; }
         .heatmap-container::-webkit-scrollbar-thumb { background: #34495e; border-radius: 4px; }
@@ -87,7 +86,7 @@
     <div class="offcanvas-md offcanvas-start sidebar d-flex flex-column" tabindex="-1" id="sidebarMenu" style="background-color: #1a252f; color: white;">
         <div class="offcanvas-header d-md-none border-bottom border-secondary">
             <h5 class="offcanvas-title fw-bold text-white">收益管理</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" id="mobile-close-btn"></button>
         </div>
         <div class="offcanvas-body d-flex flex-column p-0 flex-grow-1">
             <h5 class="text-center mt-4 mb-3 text-white d-none d-md-block fw-bold">收益管理系統</h5>
@@ -489,15 +488,6 @@
       { group: "研磨石 / 其他", value: "研磨石 (Lv.4>5)", text: "研磨石 (Lv.4>5)" }, { group: "研磨石 / 其他", value: "研磨石 (Lv.5>6)", text: "研磨石 (Lv.5>6)" }
   ];
 
-  function showScreen(screen) {
-      loginScreen.style.display = "none";
-      onboardingScreen.style.display = "none";
-      mainApp.style.display = "none";
-      if (screen === 'login') loginScreen.style.display = "flex";
-      if (screen === 'onboarding') onboardingScreen.style.display = "flex";
-      if (screen === 'dashboard') mainApp.style.display = "block";
-  }
-
   async function loadUserSettings() {
       if(!currentUserUid) return;
       const docRef = doc(db, "UserSettings", currentUserUid);
@@ -534,7 +524,6 @@
       renderCustomItemList();
       renderSidebar();
       
-      // 初始化自訂日期的預設值為本月，避免點擊自訂時出現空值
       const today = new Date();
       document.getElementById("overview-start-date").value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
       document.getElementById("overview-end-date").value = today.toISOString().split('T')[0];
@@ -547,6 +536,13 @@
       try {
           await setDoc(doc(db, "UserSettings", currentUserUid), userSettings);
       } catch(err) { console.error("設定儲存失敗", err); }
+  }
+
+  function showScreen(screen) {
+      loginScreen.style.display = "none"; onboardingScreen.style.display = "none"; mainApp.style.display = "none";
+      if (screen === 'login') loginScreen.style.display = "flex";
+      if (screen === 'onboarding') onboardingScreen.style.display = "flex";
+      if (screen === 'dashboard') mainApp.style.display = "block";
   }
 
   document.getElementById("btn-start-journey").addEventListener("click", async () => {
@@ -592,15 +588,38 @@
       });
   }
 
+  // 💡 定義 TomSelect 星星渲染設定 (讓下拉選單內的常規目標帶有 ⭐)
+  const tsRenderConfig = {
+      item: function(data, escape) {
+          let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.value);
+          return '<div class="' + (isRoutine ? 'bg-dark text-white' : '') + '">' + (isRoutine ? '<span class="text-warning">⭐</span> ' : '') + escape(data.text) + '</div>';
+      },
+      option: function(data, escape) {
+          let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.value);
+          return '<div>' + (isRoutine ? '<span class="text-warning">⭐</span> ' : '') + escape(data.text) + '</div>';
+      }
+  };
+
   function loadRoutineBosses() {
       if(!bossSelectRoutine) return;
       bossSelectRoutine.setValue(userSettings.routineBosses[activeChar] || []);
   }
 
   document.getElementById("btn-save-routine-preset").addEventListener("click", (e) => {
-      e.preventDefault(); let selected = bossSelectRoutine.getValue(); 
-      userSettings.routineBosses[activeChar] = selected; saveUserSettings();
-      alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！`);
+      e.preventDefault();
+      let selected = bossSelectRoutine.getValue(); 
+      userSettings.routineBosses[activeChar] = selected; 
+      saveUserSettings();
+      
+      // 💡 強制重繪下拉選單的星星標記
+      bossSelectRoutine.clear();
+      bossSelectRoutine.setValue(selected);
+      
+      // 💡 重新渲染表格，讓表格內的星星即時出現
+      renderRoutineTable(getWeekBoundaries());
+      renderLootTable();
+      
+      alert(`⭐ 已將這 ${selected.length} 隻王設為常規清單！\n名單中的王會標記 ⭐，方便您與變動的王區分。`);
   });
 
   onAuthStateChanged(auth, async (user) => {
@@ -611,8 +630,10 @@
               const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
               document.getElementById("input-boss-routine").innerHTML = optionsHtml;
               document.getElementById("input-boss-loot").innerHTML = optionsHtml;
-              bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)..." });
-              bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標..." });
+              
+              // 💡 套用星星渲染設定
+              bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)...", render: tsRenderConfig });
+              bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標...", render: tsRenderConfig });
           }
           document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
           document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
@@ -664,7 +685,7 @@
           saveUserSettings(); 
       }
       
-      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司", "惡夢仙境"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -673,6 +694,15 @@
       document.querySelectorAll(".task-checkbox").forEach(chk => { 
           chk.addEventListener("change", (e) => { savedData.tasks[e.target.dataset.idx] = e.target.checked; saveUserSettings(); }); 
       });
+  }
+
+  function hideOffcanvas() {
+      const offcanvasEl = document.getElementById('sidebarMenu');
+      if (offcanvasEl.classList.contains('show')) {
+          const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+          if(bsOffcanvas) bsOffcanvas.hide();
+          else document.getElementById('mobile-close-btn').click();
+      }
   }
 
   function renderSidebar() {
@@ -694,9 +724,16 @@
           
           textSpan.addEventListener("click", (e) => { 
               e.preventDefault(); activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
-              renderSidebar(); loadRecords(); 
-              const offcanvasEl = document.getElementById('sidebarMenu');
-              if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
+              // 💡 切換角色時，更新下拉選單的星星標記 (需要重置配置)
+              if (bossSelectRoutine) {
+                  bossSelectRoutine.destroy();
+                  bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)...", render: tsRenderConfig });
+              }
+              if (bossSelectLoot) {
+                  bossSelectLoot.destroy();
+                  bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標...", render: tsRenderConfig });
+              }
+              renderSidebar(); loadRecords(); hideOffcanvas();
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
@@ -708,9 +745,7 @@
                       userSettings.characters.splice(index, 1); 
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
-                      } else {
-                          activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar;
-                      }
+                      } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
@@ -718,6 +753,7 @@
                   if (activeChar === charName) { activeChar = action.trim(); userSettings.lastActiveChar = activeChar; }
                   saveUserSettings(); renderSidebar(); loadRecords(); 
               }
+              hideOffcanvas();
           });
           a.appendChild(textSpan); a.appendChild(editBtn); charListContainer.appendChild(a);
       });
@@ -730,9 +766,7 @@
           const charName = newChar.trim();
           if (!userSettings.characters.includes(charName)) { userSettings.characters.push(charName); }
           activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings(); 
-          renderSidebar(); loadRecords(); 
-          const offcanvasEl = document.getElementById('sidebarMenu');
-          if (offcanvasEl.classList.contains('show')) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
+          renderSidebar(); loadRecords(); hideOffcanvas();
       } 
   });
 
@@ -745,7 +779,7 @@
       
       let dateCounts = {};
       records.forEach(r => { 
-          if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
+          if(r.item_name && r.item_name !== "無") {
               dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; 
           }
       });
@@ -758,15 +792,9 @@
           cell.title = count > 0 ? `${dateStr} 掉落了 ${count} 個寶物！` : `${dateStr} 無掉寶`; 
           heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
-      
-      // 💡 修改後：確實選中 container 並滑動到底
-      setTimeout(() => { 
-          const container = document.querySelector('.heatmap-container');
-          if(container) container.scrollLeft = container.scrollWidth;
-      }, 100);
+      setTimeout(() => { const container = document.querySelector('.heatmap-container'); if(container) container.scrollLeft = container.scrollWidth; }, 100);
   }
 
-  // 💡 新增的 GA 模式帳號總覽結算器
   function updateAccountOverview() {
       const rangeType = document.getElementById("overview-quick-range").value;
       const startDateInput = document.getElementById("overview-start-date");
@@ -779,8 +807,8 @@
 
       if (rangeType === "custom") {
           startDateInput.classList.remove("d-none"); endDateInput.classList.remove("d-none"); separator.classList.remove("d-none");
-          start = new Date(startDateInput.value + "T00:00:00");
-          end = new Date(endDateInput.value + "T23:59:59");
+          if (!startDateInput.value || !endDateInput.value) return; 
+          start = new Date(startDateInput.value + "T00:00:00"); end = new Date(endDateInput.value + "T23:59:59");
       } else {
           startDateInput.classList.add("d-none"); endDateInput.classList.add("d-none"); separator.classList.add("d-none");
           if (rangeType === "this_week") {
@@ -798,18 +826,13 @@
 
       currentRecordsData.forEach(data => {
           const rd = new Date(data.date + "T00:00:00");
-
-          // 全帳號加總邏輯：套用 GA 日期篩選
           if (rd >= start && rd <= end) {
               accountCrystal += data.crystal_income_billion || 0;
               if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
                   accountDividend += data.my_dividend_billion;
               }
           }
-          // 個人週打卡邏輯：永遠只看「本週四~下週三」
-          if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
-              charWeeklyCount++;
-          }
+          if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) charWeeklyCount++;
       });
 
       document.getElementById("account-total-crystal").innerText = accountCrystal.toFixed(2) + " 億";
@@ -818,7 +841,6 @@
       document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
   }
 
-  // 綁定 GA 模式篩選器的事件
   document.getElementById("overview-quick-range").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
@@ -830,14 +852,11 @@
           const querySnapshot = await getDocs(q);
           
           let records = []; const boundaries = getWeekBoundaries();
-          querySnapshot.forEach((doc) => { 
-              let data = doc.data(); data.id = doc.id; records.push(data); 
-          });
+          querySnapshot.forEach((doc) => { let data = doc.data(); data.id = doc.id; records.push(data); });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
           
-          // 💡 更新 UI
-          updateAccountOverview(); // 呼叫 GA 篩選器重新結算
+          updateAccountOverview(); 
           renderHeatmap(records);
           updateCharacterStats(boundaries);
           renderRoutineTable(boundaries);
@@ -858,16 +877,12 @@
           if (weekFilter === "this_week") inDateRange = rd >= boundaries.thisWeekStart;
           if (weekFilter === "last_week") inDateRange = rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
 
-          if (inDateRange) {
-              totalCrystal += data.crystal_income_billion || 0;
-          }
+          if (inDateRange) { totalCrystal += data.crystal_income_billion || 0; }
 
           if (data.item_name && data.item_name !== "無") {
               if (data.status === "待售出") pendingCount++;
               if (data.payout_status === "未結清") unsettledCount++;
-              if (data.payout_status === "已結清" && data.my_dividend_billion > 0) {
-                  totalDividend += data.my_dividend_billion;
-              }
+              if (data.payout_status === "已結清" && data.my_dividend_billion > 0) totalDividend += data.my_dividend_billion;
           }
       });
 
@@ -892,10 +907,16 @@
       let html = "";
       filtered.forEach(data => {
           let dropsInfo = data.item_name !== "無" ? `<span class="badge bg-warning text-dark">📦 ${data.item_name}</span>` : `<span class="text-muted">--</span>`;
+          // 💡 在表格內為常規清單的目標打上星星標籤
+          let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
+          let badgeHtml = isRoutine 
+              ? `<span class="badge bg-dark text-warning border border-warning" style="font-size: 0.65em; margin-right: 4px; vertical-align: text-top;">⭐常規</span>` 
+              : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.65em; margin-right: 4px; vertical-align: text-top;">🆕臨時</span>`;
+
           html += `
               <tr>
                   <td class="text-start ps-3">
-                      <div class="fw-bold">${data.boss_name} <small class="text-muted fw-normal">${data.date}</small></div>
+                      <div class="fw-bold mb-1">${badgeHtml}${data.boss_name} <small class="text-muted fw-normal">${data.date}</small></div>
                       <span class="badge-battle">👥 ${data.total_players}人平分</span>
                   </td>
                   <td><span class="crystal-text">${data.crystal_income_billion} 億</span></td>
@@ -932,12 +953,18 @@
           let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
           let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
           let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
+          
+          // 💡 寶物庫也打上星星標籤
+          let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
+          let badgeHtml = isRoutine 
+              ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` 
+              : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
 
           html += `
               <tr>
                   <td class="text-start ps-3">
-                      <div class="fw-bold text-primary">📦 ${data.item_name}</div>
-                      <small class="text-muted">${data.date} | ${data.boss_name}</small>
+                      <div class="fw-bold text-primary mb-1">📦 ${data.item_name}</div>
+                      <small class="text-muted">${badgeHtml}${data.date} | ${data.boss_name}</small>
                   </td>
                   <td>
                       <div class="text-muted" style="font-size:0.85em;">售價: ${data.item_total_price_billion} 億</div>
