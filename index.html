@@ -14,6 +14,7 @@
         .status-badge { padding: 5px 10px; border-radius: 6px; font-size: 0.85em; font-weight: bold; }
         .bg-pending { background-color: #ffeeba; color: #856404; }
         .bg-sold { background-color: #d4edda; color: #155724; }
+        .bg-self { background-color: #e2e3e5; color: #383d41; } /* 💡 新增自用的灰色標籤 */
         .bg-unsettled { background-color: #f8d7da; color: #721c24; }
         .bg-settled { background-color: #d1ecf1; color: #0c5460; }
         
@@ -321,10 +322,10 @@
                                         <select class="form-select" id="input-status">
                                             <option value="待售出">待售出</option>
                                             <option value="已售出">已售出</option>
-                                        </select>
+                                            <option value="自用">自用 (不計入收益)</option> </select>
                                     </div>
                                     <div class="col-6 col-md-4">
-                                        <label class="form-label">總售價 <small>(億)</small></label>
+                                        <label class="form-label">總市價 <small>(億)</small></label>
                                         <input type="number" class="form-control" id="input-item-price" placeholder="例: 150" step="0.1" min="0">
                                     </div>
                                     <div class="col-6 col-md-4">
@@ -332,7 +333,7 @@
                                         <select class="form-select" id="input-payout-status">
                                             <option value="未結清">未結清</option>
                                             <option value="已結清">已結清</option>
-                                        </select>
+                                            <option value="無需分帳">無需分帳</option> </select>
                                     </div>
                                 </div>
 
@@ -357,7 +358,7 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>物品與目標</th>
-                                            <th>總售價 / 個人收益</th>
+                                            <th>市價 / 個人收益</th>
                                             <th>狀態追蹤</th>
                                             <th>操作</th>
                                         </tr>
@@ -452,8 +453,7 @@
         <h5 class="modal-title fw-bold">⚙️ 管理常規討伐名單</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body bg-light" id="routine-checkbox-container">
-        </div>
+      <div class="modal-body bg-light" id="routine-checkbox-container"></div>
       <div class="modal-footer d-flex justify-content-between">
         <span class="text-muted" style="font-size: 0.85em;">勾選的王將帶有 ⭐ 標記，並作為預設打卡名單。</span>
         <div>
@@ -472,8 +472,7 @@
         <h5 class="modal-title fw-bold">☑️ 批次勾選討伐目標</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body bg-light" id="batch-checkbox-container">
-        </div>
+      <div class="modal-body bg-light" id="batch-checkbox-container"></div>
       <div class="modal-footer d-flex justify-content-between">
         <span class="text-muted" style="font-size: 0.85em;">此操作僅將目標帶入目前表單，不會修改您的常規設定。</span>
         <div>
@@ -555,9 +554,7 @@
               if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
                   activeChar = userSettings.lastActiveChar;
               } else {
-                  activeChar = userSettings.characters[0];
-                  userSettings.lastActiveChar = activeChar;
-                  saveUserSettings(); 
+                  activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; saveUserSettings(); 
               }
               initDashboard();
           } else {
@@ -585,9 +582,7 @@
 
   async function saveUserSettings() {
       if(!currentUserUid) return;
-      try {
-          await setDoc(doc(db, "UserSettings", currentUserUid), userSettings);
-      } catch(err) { console.error("設定儲存失敗", err); }
+      try { await setDoc(doc(db, "UserSettings", currentUserUid), userSettings); } catch(err) { console.error("設定儲存失敗", err); }
   }
 
   document.getElementById("btn-start-journey").addEventListener("click", async () => {
@@ -649,10 +644,8 @@
       bossSelectRoutine.setValue(userSettings.routineBosses[activeChar] || []);
   }
 
-  // 共用的產生 Checkbox Modal 函數
   function renderBossCheckboxes(containerId, checkboxClass, checkedList) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = "";
+      const container = document.getElementById(containerId); container.innerHTML = "";
       const optgroups = document.getElementById("hidden-boss-options").querySelectorAll("optgroup");
 
       optgroups.forEach(group => {
@@ -660,16 +653,12 @@
           let groupDiv = document.createElement("div");
           groupDiv.className = "mb-3 card p-3 shadow-sm border-0";
           groupDiv.innerHTML = `<h6 class="fw-bold text-primary border-bottom pb-2 mb-2">⚔️ ${groupLabel}</h6>`;
-          let rowDiv = document.createElement("div");
-          rowDiv.className = "row";
+          let rowDiv = document.createElement("div"); rowDiv.className = "row";
 
           group.querySelectorAll("option").forEach(opt => {
-              let bossVal = opt.value;
-              let bossText = opt.innerText;
+              let bossVal = opt.value; let bossText = opt.innerText;
               let isChecked = checkedList.includes(bossVal) ? "checked" : "";
-              
-              let col = document.createElement("div");
-              col.className = "col-12 col-md-6 mb-1";
+              let col = document.createElement("div"); col.className = "col-12 col-md-6 mb-1";
               col.innerHTML = `
                   <div class="form-check">
                       <input class="form-check-input ${checkboxClass}" type="checkbox" value="${bossVal}" id="${containerId}_${bossVal}" ${isChecked} style="cursor: pointer;">
@@ -678,28 +667,22 @@
               `;
               rowDiv.appendChild(col);
           });
-          groupDiv.appendChild(rowDiv);
-          container.appendChild(groupDiv);
+          groupDiv.appendChild(rowDiv); container.appendChild(groupDiv);
       });
   }
 
-  // 💡 點擊「⚙️ 管理常規名單」
   document.getElementById("btn-manage-routine").addEventListener("click", () => {
       let currentRoutine = userSettings.routineBosses[activeChar] || [];
       renderBossCheckboxes("routine-checkbox-container", "routine-checkbox", currentRoutine);
   });
 
-  // 💡 儲存常規模板
   document.getElementById("btn-save-routine-modal").addEventListener("click", async () => {
       let selected = [];
-      document.querySelectorAll(".routine-checkbox:checked").forEach(chk => {
-          selected.push(chk.value);
-      });
+      document.querySelectorAll(".routine-checkbox:checked").forEach(chk => { selected.push(chk.value); });
       userSettings.routineBosses[activeChar] = selected;
       await saveUserSettings();
       
-      const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal'));
-      if(bsModal) bsModal.hide();
+      const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
       
       if (bossSelectRoutine) {
           bossSelectRoutine.destroy();
@@ -710,37 +693,40 @@
           bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標...", render: tsRenderConfig });
       }
       
-      loadRoutineBosses(); 
-      renderRoutineTable(getWeekBoundaries());
-      renderLootTable();
+      loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
   });
 
-  // 💡 新增：點擊「☑️ 批次勾選」
   document.getElementById("batchModal").addEventListener("show.bs.modal", () => {
-      // 開啟時，預設帶入當前下拉選單已經選取的王
       let currentSelected = bossSelectRoutine.getValue();
       let selectedArr = Array.isArray(currentSelected) ? currentSelected : (currentSelected ? [currentSelected] : []);
       renderBossCheckboxes("batch-checkbox-container", "batch-checkbox", selectedArr);
   });
 
-  // 💡 新增：儲存批次勾選 (僅套用至 TomSelect，不存入設定檔)
   document.getElementById("btn-confirm-batch-modal").addEventListener("click", () => {
       let selected = [];
-      document.querySelectorAll(".batch-checkbox:checked").forEach(chk => {
-          selected.push(chk.value);
-      });
-      
-      // 直接修改主畫面下拉選單的值
+      document.querySelectorAll(".batch-checkbox:checked").forEach(chk => { selected.push(chk.value); });
       bossSelectRoutine.setValue(selected);
-      
-      const bsModal = bootstrap.Modal.getInstance(document.getElementById('batchModal'));
-      if(bsModal) bsModal.hide();
+      const bsModal = bootstrap.Modal.getInstance(document.getElementById('batchModal')); if(bsModal) bsModal.hide();
+  });
+
+  // ==========================================
+  // 💡 下拉選單「自用」狀態連動處理
+  // 當物品狀態選了自用，自動把分帳狀態鎖死為「無需分帳」
+  // ==========================================
+  document.getElementById("input-status").addEventListener("change", (e) => {
+      const payoutSelect = document.getElementById("input-payout-status");
+      if(e.target.value === "自用") {
+          payoutSelect.value = "無需分帳";
+          payoutSelect.disabled = true;
+      } else {
+          payoutSelect.disabled = false;
+          if (payoutSelect.value === "無需分帳") payoutSelect.value = "未結清"; 
+      }
   });
 
   onAuthStateChanged(auth, async (user) => {
       if (user) {
-          currentUserUid = user.uid; 
-          document.getElementById("user-name").innerText = user.displayName;
+          currentUserUid = user.uid; document.getElementById("user-name").innerText = user.displayName;
           if (!bossSelectRoutine) {
               const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
               document.getElementById("input-boss-routine").innerHTML = optionsHtml;
@@ -756,10 +742,7 @@
       }
   });
 
-  document.getElementById("btn-login").addEventListener("click", () => {
-      signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); });
-  });
-
+  document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); }); });
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
   function getWeekBoundaries() {
@@ -793,12 +776,10 @@
       let savedData = userSettings.weeklyTasks[activeChar];
       
       if (savedData.weekStart !== thisWeekStart) { 
-          savedData = { weekStart: thisWeekStart, tasks: {} }; 
-          userSettings.weeklyTasks[activeChar] = savedData;
-          saveUserSettings(); 
+          savedData = { weekStart: thisWeekStart, tasks: {} }; userSettings.weeklyTasks[activeChar] = savedData; saveUserSettings(); 
       }
       
-      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司", "惡夢仙境"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -813,8 +794,7 @@
       const offcanvasEl = document.getElementById('sidebarMenu');
       if (offcanvasEl.classList.contains('show')) {
           const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
-          if(bsOffcanvas) bsOffcanvas.hide();
-          else document.getElementById('mobile-close-btn').click();
+          if(bsOffcanvas) bsOffcanvas.hide(); else document.getElementById('mobile-close-btn').click();
       }
   }
 
@@ -836,8 +816,7 @@
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           
           textSpan.addEventListener("click", (e) => { 
-              e.preventDefault(); 
-              activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
+              e.preventDefault(); activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
               if (bossSelectRoutine) {
                   bossSelectRoutine.destroy();
                   bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)...", render: tsRenderConfig });
@@ -858,9 +837,7 @@
                       userSettings.characters.splice(index, 1); 
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
-                      } else {
-                          activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar;
-                      }
+                      } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
@@ -885,7 +862,7 @@
       } 
   });
 
-  // 💡 熱力圖：價值權重 (Value Weighting) 修復版
+  // 💡 熱力圖：價值權重
   function renderHeatmap(records) {
       const heatmapGrid = document.getElementById("heatmap-grid"); 
       if(!heatmapGrid) return;
@@ -896,6 +873,7 @@
       let dateValues = {};
       records.forEach(r => { 
           if(r.item_name && r.item_name !== "無") {
+              // 不管是不是自用，只要掉落了，就照算價值點亮熱力圖
               dateValues[r.date] = (dateValues[r.date] || 0) + (parseFloat(r.item_total_price_billion) || 0);
           }
       });
@@ -951,7 +929,8 @@
           const rd = new Date(data.date + "T00:00:00");
           if (rd >= start && rd <= end) {
               accountCrystal += data.crystal_income_billion || 0;
-              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.my_dividend_billion > 0) {
+              // 💡 總覽排除「自用」物品的收益
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.status !== "自用" && data.my_dividend_billion > 0) {
                   accountDividend += data.my_dividend_billion;
               }
           }
@@ -1003,9 +982,12 @@
           if (inDateRange) { totalCrystal += data.crystal_income_billion || 0; }
 
           if (data.item_name && data.item_name !== "無") {
-              if (data.status === "待售出") pendingCount++;
-              if (data.payout_status === "未結清") unsettledCount++;
-              if (data.payout_status === "已結清" && data.my_dividend_billion > 0) totalDividend += data.my_dividend_billion;
+              // 💡 統計卡片邏輯：自用的物品，不計入待售出、不計入待結算、也不計入已分紅總計
+              if (data.status !== "自用") {
+                  if (data.status === "待售出") pendingCount++;
+                  if (data.payout_status === "未結清") unsettledCount++;
+                  if (data.payout_status === "已結清" && data.my_dividend_billion > 0) totalDividend += data.my_dividend_billion;
+              }
           }
       });
 
@@ -1072,8 +1054,21 @@
 
       let html = "";
       lootRecords.forEach(data => {
-          let sBadge = data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`;
-          let pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled">⚠️ 未結清</span>` : `<span class="status-badge bg-settled">✔️ 已結清</span>`;
+          // 💡 處理自用的 UI 顯示
+          let sBadge = "";
+          if (data.status === "自用") {
+              sBadge = `<span class="status-badge bg-self">💎 自用</span>`;
+          } else if (data.status === "待售出") {
+              sBadge = `<span class="status-badge bg-pending">⏳ 待售出</span>`;
+          } else {
+              sBadge = `<span class="status-badge bg-sold">✔️ 已售出</span>`;
+          }
+          
+          let pBadge = "";
+          if (data.status !== "自用" && data.payout_status !== "無需分帳") {
+              pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled mt-1">⚠️ 未結清</span>` : `<span class="status-badge bg-settled mt-1">✔️ 已結清</span>`;
+          }
+
           let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
           
           let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
@@ -1081,8 +1076,8 @@
               ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` 
               : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
 
-          // 💡 一鍵結清按鈕
-          let settleBtn = (data.payout_status === "未結清") 
+          // 💡 一鍵結清按鈕 (僅限非自用、非無需分帳的未結清物品)
+          let settleBtn = (data.payout_status === "未結清" && data.status !== "自用") 
               ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1" data-id="${data.id}">✅ 結清</button>` 
               : '';
 
@@ -1093,14 +1088,14 @@
                       <small class="text-muted">${badgeHtml}${data.date} | ${data.boss_name}</small>
                   </td>
                   <td>
-                      <div class="text-muted" style="font-size:0.85em;">售價: ${data.item_total_price_billion} 億</div>
-                      <div class="dividend-text">${dividendLabel}: +${data.my_dividend_billion} 億</div>
+                      <div class="text-muted" style="font-size:0.85em;">市價: ${data.item_total_price_billion} 億</div>
+                      <div class="dividend-text">${dividendLabel}: +${data.status === '自用' ? 0 : data.my_dividend_billion} 億</div>
                   </td>
-                  <td><div class="d-flex flex-column gap-1 align-items-center">${sBadge}${pBadge}</div></td> 
+                  <td><div class="d-flex flex-column gap-0 align-items-center">${sBadge}${pBadge}</div></td> 
                   <td>
                       <div class="d-flex flex-column gap-1 justify-content-center">
                           ${settleBtn}
-                          <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}" data-type="loot">編輯帳務</button>
+                          <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="${data.id}" data-type="loot">編輯</button>
                           <button class="btn btn-sm btn-outline-danger btn-delete-record" data-id="${data.id}">刪除</button>
                       </div>
                   </td>
@@ -1173,12 +1168,17 @@
               saveUserSettings(); initItemSelect(); renderCustomItemList(); 
           }
       }
+      
+      // 💡 確保留存的資料防呆
+      let status = document.getElementById("input-status").value;
+      let payout = document.getElementById("input-payout-status").value;
+      if (status === "自用") payout = "無需分帳"; // 後端硬性覆蓋
 
       const data = {
           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
           date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, crystal_income_billion: parseFloat(myCrystalIncome), 
           item_name: itemName, item_total_price_billion: price, my_dividend_billion: parseFloat(dividend),
-          status: document.getElementById("input-status").value, payout_status: document.getElementById("input-payout-status").value
+          status: status, payout_status: payout
       };
 
       const editId = document.getElementById("edit-doc-id-loot").value;
@@ -1198,7 +1198,7 @@
   }
 
   document.addEventListener("click", async (e) => {
-      // 💡 處理「一鍵結清」按鈕
+      // 處理一鍵結清
       const btnSettle = e.target.closest(".btn-quick-settle");
       if (btnSettle) {
           e.preventDefault();
@@ -1215,7 +1215,11 @@
       }
 
       const btnDel = e.target.closest(".btn-delete-record");
-      if (btnDel && confirm("確定刪除此紀錄？")) { await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); loadRecords(); return; }
+      if (btnDel && confirm("確定刪除此紀錄？")) { 
+          await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); 
+          loadRecords(); // 💡 確保刪除後觸發強制重繪（包含熱力圖）
+          return; 
+      }
 
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
@@ -1243,6 +1247,9 @@
               document.getElementById("input-party-size-loot").value = d.total_players || 1;
               document.getElementById("input-teammates-loot").value = d.teammates.join(" ");
               document.getElementById("input-status").value = d.status || "待售出";
+              // 手動觸發一次 change 事件來處理「自用」下拉選單連動
+              document.getElementById("input-status").dispatchEvent(new Event('change'));
+              
               document.getElementById("input-item-price").value = d.item_total_price_billion || "";
               document.getElementById("input-payout-status").value = d.payout_status || "未結清";
 
