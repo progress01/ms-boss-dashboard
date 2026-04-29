@@ -556,9 +556,7 @@
               if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
                   activeChar = userSettings.lastActiveChar;
               } else {
-                  activeChar = userSettings.characters[0];
-                  userSettings.lastActiveChar = activeChar;
-                  saveUserSettings(); 
+                  activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; saveUserSettings(); 
               }
               initDashboard();
           } else {
@@ -713,7 +711,6 @@
       const bsModal = bootstrap.Modal.getInstance(document.getElementById('batchModal')); if(bsModal) bsModal.hide();
   });
 
-  // 💡 自用狀態連動
   document.getElementById("input-status").addEventListener("change", (e) => {
       const payoutSelect = document.getElementById("input-payout-status");
       if(e.target.value === "自用") {
@@ -863,7 +860,6 @@
       } 
   });
 
-  // 💡 修正：熱力圖只顯示「當前角色」的掉寶，所見即所得
   function renderHeatmap(records) {
       const heatmapGrid = document.getElementById("heatmap-grid"); 
       if(!heatmapGrid) return;
@@ -873,7 +869,6 @@
       
       let dateDrops = {};
       records.forEach(r => { 
-          // 💡 嚴格比對 activeChar，避免被幽靈紀錄干擾
           if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
               if(!dateDrops[r.date]) dateDrops[r.date] = { value: 0, count: 0 };
               dateDrops[r.date].value += (parseFloat(r.item_total_price_billion) || 0);
@@ -892,7 +887,6 @@
               cell.title = `${dateStr} 無掉寶`;
           } else {
               let val = dropData.value;
-              // 💡 就算自用填 0，只要有掉寶就保底亮暗金色 (hc-1)
               if(val <= 10) cell.classList.add("hc-1"); 
               else if(val <= 50) cell.classList.add("hc-2"); 
               else if(val <= 100) cell.classList.add("hc-3"); 
@@ -933,6 +927,9 @@
       }
 
       let accountCrystal = 0; let accountDividend = 0; let charWeeklyCount = 0;
+      
+      // 💡 定義不計入每週 12 隻扣打的「月王」例外名單
+      const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"]; 
 
       currentRecordsData.forEach(data => {
           const rd = new Date(data.date + "T00:00:00");
@@ -942,7 +939,12 @@
                   accountDividend += data.my_dividend_billion;
               }
           }
-          if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) charWeeklyCount++;
+          if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
+              // 💡 排除月王，不計入 12 隻
+              if (!monthlyBosses.includes(data.boss_name)) {
+                  charWeeklyCount++;
+              }
+          }
       });
 
       document.getElementById("account-total-crystal").innerText = accountCrystal.toFixed(2) + " 億";
@@ -1220,7 +1222,7 @@
       const btnDel = e.target.closest(".btn-delete-record");
       if (btnDel && confirm("確定刪除此紀錄？")) { 
           await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); 
-          loadRecords(); // 💡 確保觸發重繪
+          loadRecords(); 
           return; 
       }
 
