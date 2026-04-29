@@ -46,7 +46,7 @@
         .hc-1 { background-color: #9e6f21; }
         .hc-2 { background-color: #d49a2a; }
         .hc-3 { background-color: #f1b31c; }
-        .hc-4 { background-color: #e74c3c; } /* 💡 價值破百億的閃耀紅 */
+        .hc-4 { background-color: #e74c3c; }
         
         .task-checkbox-label { color: #bdc3c7; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
         .form-check-input:checked + .task-checkbox-label { color: #3498db; text-decoration: line-through; opacity: 0.7; }
@@ -54,7 +54,7 @@
         .nav-tabs .nav-link { color: #6c757d; font-weight: bold; border: none; border-bottom: 3px solid transparent; }
         .nav-tabs .nav-link.active { color: #2c3e50; background: none; border-bottom: 3px solid #3498db; }
         
-        .routine-checkbox-label { cursor: pointer; user-select: none; font-size: 0.9rem; }
+        .routine-checkbox-label, .batch-checkbox-label { cursor: pointer; user-select: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -216,8 +216,11 @@
                                 </div>
                                 <div class="mb-3">
                                     <div class="d-flex justify-content-between align-items-end mb-1">
-                                        <label class="form-label mb-0">討伐目標 <small class="text-muted">(載入常規，可自由增減)</small></label>
-                                        <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 管理常規名單</a>
+                                        <label class="form-label mb-0">討伐目標 <small class="text-muted">(下拉搜尋)</small></label>
+                                        <div class="d-flex gap-3">
+                                            <a href="#" class="text-decoration-none text-success fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#batchModal">☑️ 批次勾選</a>
+                                            <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 管理常規</a>
+                                        </div>
                                     </div>
                                     <select id="input-boss-routine" multiple placeholder="選擇目標..."></select>
                                 </div>
@@ -452,10 +455,30 @@
       <div class="modal-body bg-light" id="routine-checkbox-container">
         </div>
       <div class="modal-footer d-flex justify-content-between">
-        <span class="text-muted" style="font-size: 0.85em;">勾選的王將帶有 ⭐ 標記，並作為每週的預設打卡名單。</span>
+        <span class="text-muted" style="font-size: 0.85em;">勾選的王將帶有 ⭐ 標記，並作為預設打卡名單。</span>
         <div>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
             <button type="button" class="btn btn-primary fw-bold px-4" id="btn-save-routine-modal">💾 儲存為常規模板</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="batchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold">☑️ 批次勾選討伐目標</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light" id="batch-checkbox-container">
+        </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <span class="text-muted" style="font-size: 0.85em;">此操作僅將目標帶入目前表單，不會修改您的常規設定。</span>
+        <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-success fw-bold px-4" id="btn-confirm-batch-modal">✅ 確認帶入</button>
         </div>
       </div>
     </div>
@@ -626,11 +649,11 @@
       bossSelectRoutine.setValue(userSettings.routineBosses[activeChar] || []);
   }
 
-  document.getElementById("btn-manage-routine").addEventListener("click", () => {
-      const container = document.getElementById("routine-checkbox-container");
+  // 共用的產生 Checkbox Modal 函數
+  function renderBossCheckboxes(containerId, checkboxClass, checkedList) {
+      const container = document.getElementById(containerId);
       container.innerHTML = "";
       const optgroups = document.getElementById("hidden-boss-options").querySelectorAll("optgroup");
-      let currentRoutine = userSettings.routineBosses[activeChar] || [];
 
       optgroups.forEach(group => {
           let groupLabel = group.getAttribute("label");
@@ -643,14 +666,14 @@
           group.querySelectorAll("option").forEach(opt => {
               let bossVal = opt.value;
               let bossText = opt.innerText;
-              let isChecked = currentRoutine.includes(bossVal) ? "checked" : "";
+              let isChecked = checkedList.includes(bossVal) ? "checked" : "";
               
               let col = document.createElement("div");
               col.className = "col-12 col-md-6 mb-1";
               col.innerHTML = `
                   <div class="form-check">
-                      <input class="form-check-input routine-checkbox" type="checkbox" value="${bossVal}" id="rc_${bossVal}" ${isChecked} style="cursor: pointer;">
-                      <label class="form-check-label routine-checkbox-label" for="rc_${bossVal}">${bossText}</label>
+                      <input class="form-check-input ${checkboxClass}" type="checkbox" value="${bossVal}" id="${containerId}_${bossVal}" ${isChecked} style="cursor: pointer;">
+                      <label class="form-check-label ${checkboxClass}-label" for="${containerId}_${bossVal}">${bossText}</label>
                   </div>
               `;
               rowDiv.appendChild(col);
@@ -658,8 +681,15 @@
           groupDiv.appendChild(rowDiv);
           container.appendChild(groupDiv);
       });
+  }
+
+  // 💡 點擊「⚙️ 管理常規名單」
+  document.getElementById("btn-manage-routine").addEventListener("click", () => {
+      let currentRoutine = userSettings.routineBosses[activeChar] || [];
+      renderBossCheckboxes("routine-checkbox-container", "routine-checkbox", currentRoutine);
   });
 
+  // 💡 儲存常規模板
   document.getElementById("btn-save-routine-modal").addEventListener("click", async () => {
       let selected = [];
       document.querySelectorAll(".routine-checkbox:checked").forEach(chk => {
@@ -683,6 +713,28 @@
       loadRoutineBosses(); 
       renderRoutineTable(getWeekBoundaries());
       renderLootTable();
+  });
+
+  // 💡 新增：點擊「☑️ 批次勾選」
+  document.getElementById("batchModal").addEventListener("show.bs.modal", () => {
+      // 開啟時，預設帶入當前下拉選單已經選取的王
+      let currentSelected = bossSelectRoutine.getValue();
+      let selectedArr = Array.isArray(currentSelected) ? currentSelected : (currentSelected ? [currentSelected] : []);
+      renderBossCheckboxes("batch-checkbox-container", "batch-checkbox", selectedArr);
+  });
+
+  // 💡 新增：儲存批次勾選 (僅套用至 TomSelect，不存入設定檔)
+  document.getElementById("btn-confirm-batch-modal").addEventListener("click", () => {
+      let selected = [];
+      document.querySelectorAll(".batch-checkbox:checked").forEach(chk => {
+          selected.push(chk.value);
+      });
+      
+      // 直接修改主畫面下拉選單的值
+      bossSelectRoutine.setValue(selected);
+      
+      const bsModal = bootstrap.Modal.getInstance(document.getElementById('batchModal'));
+      if(bsModal) bsModal.hide();
   });
 
   onAuthStateChanged(auth, async (user) => {
@@ -746,7 +798,7 @@
           saveUserSettings(); 
       }
       
-      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司"].forEach((task, idx) => {
+      ["地下水道", "公會城簽到", "跳棋任務", "艾爾達斯報答", "每週怪物公園", "紅月之森", "高山副本", "安格洛公司", "惡夢仙境"].forEach((task, idx) => {
           const isChecked = savedData.tasks[idx] ? "checked" : "";
           const div = document.createElement("div"); div.className = "form-check mb-2";
           div.innerHTML = `<input class="form-check-input task-checkbox" type="checkbox" id="task-${idx}" data-idx="${idx}" ${isChecked}> <label class="form-check-label task-checkbox-label" for="task-${idx}">${task}</label>`;
@@ -833,7 +885,7 @@
       } 
   });
 
-  // 💡 熱力圖：價值權重 (Value Weighting)
+  // 💡 熱力圖：價值權重 (Value Weighting) 修復版
   function renderHeatmap(records) {
       const heatmapGrid = document.getElementById("heatmap-grid"); 
       if(!heatmapGrid) return;
@@ -844,7 +896,6 @@
       let dateValues = {};
       records.forEach(r => { 
           if(r.item_name && r.item_name !== "無") {
-              // 改為計算總價值
               dateValues[r.date] = (dateValues[r.date] || 0) + (parseFloat(r.item_total_price_billion) || 0);
           }
       });
@@ -856,12 +907,12 @@
           let cell = document.createElement("div"); cell.className = "heatmap-cell";
           
           if(val === 0) cell.classList.add("hc-0"); 
-          else if(val <= 10) cell.classList.add("hc-1"); // 10億以下
-          else if(val <= 50) cell.classList.add("hc-2"); // 10~50億
-          else if(val <= 100) cell.classList.add("hc-3"); // 50~100億
-          else cell.classList.add("hc-4"); // 大於100億
+          else if(val <= 10) cell.classList.add("hc-1"); 
+          else if(val <= 50) cell.classList.add("hc-2"); 
+          else if(val <= 100) cell.classList.add("hc-3"); 
+          else cell.classList.add("hc-4"); 
           
-          cell.title = val > 0 ? `${dateStr} 掉寶價值 ${val.toFixed(2)} 億！` : `${dateStr} 無掉寶`; 
+          cell.title = val > 0 ? `${dateStr} 掉寶總值 ${val.toFixed(2)} 億！` : `${dateStr} 無掉寶`; 
           heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
       setTimeout(() => { const container = document.querySelector('.heatmap-container'); if(container) container.scrollLeft = container.scrollWidth; }, 100);
@@ -1030,7 +1081,7 @@
               ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` 
               : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
 
-          // 💡 加入「一鍵結清」按鈕
+          // 💡 一鍵結清按鈕
           let settleBtn = (data.payout_status === "未結清") 
               ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1" data-id="${data.id}">✅ 結清</button>` 
               : '';
@@ -1152,16 +1203,13 @@
       if (btnSettle) {
           e.preventDefault();
           const docId = btnSettle.getAttribute("data-id");
-          btnSettle.innerText = "處理中...";
-          btnSettle.disabled = true;
+          btnSettle.innerText = "處理中..."; btnSettle.disabled = true;
           try {
               await updateDoc(doc(db, "DropRecords", docId), { payout_status: "已結清", status: "已售出" });
-              loadRecords(); // 重新讀取，讓右上角數字與表格狀態即時更新
+              loadRecords(); 
           } catch (error) {
-              console.error("結清失敗:", error);
-              alert("結清失敗，請稍後再試！");
-              btnSettle.innerText = "✅ 結清";
-              btnSettle.disabled = false;
+              console.error("結清失敗:", error); alert("結清失敗，請稍後再試！");
+              btnSettle.innerText = "✅ 結清"; btnSettle.disabled = false;
           }
           return;
       }
