@@ -418,7 +418,6 @@
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   
-  // ⭐ 核心修正：統一時間基準 (強制轉換為 UTC+8 台灣時間)
   function getTWNow() {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -597,6 +596,15 @@
           selectedArr.forEach(boss => {
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
               if (!existingCard) {
+                  // ⭐ 優化 2：隊伍記憶功能 (帶入上一次打此王的隊伍資料)
+                  let lastPartySize = 1;
+                  let lastTeammates = "";
+                  const lastRecord = currentRecordsData.find(r => r.character_name === activeChar && r.boss_name === boss);
+                  if (lastRecord) {
+                      lastPartySize = lastRecord.total_players || 1;
+                      lastTeammates = (lastRecord.teammates || []).join(" ");
+                  }
+
                   const card = document.createElement('div');
                   card.className = 'card mb-2 border border-secondary shadow-sm boss-card-wrapper';
                   card.setAttribute('data-boss', boss);
@@ -612,12 +620,15 @@
                           <div class="d-flex align-items-center gap-2 mb-2">
                               <label class="mb-0 small fw-bold text-secondary">討伐人數:</label>
                               <select class="form-select form-select-sm boss-party-size" data-boss="${boss}" style="width: 80px;">
-                                  <option value="1">1 人</option><option value="2">2 人</option>
-                                  <option value="3">3 人</option><option value="4">4 人</option>
-                                  <option value="5">5 人</option><option value="6">6 人</option>
+                                  <option value="1" ${lastPartySize==1?'selected':''}>1 人</option>
+                                  <option value="2" ${lastPartySize==2?'selected':''}>2 人</option>
+                                  <option value="3" ${lastPartySize==3?'selected':''}>3 人</option>
+                                  <option value="4" ${lastPartySize==4?'selected':''}>4 人</option>
+                                  <option value="5" ${lastPartySize==5?'selected':''}>5 人</option>
+                                  <option value="6" ${lastPartySize==6?'selected':''}>6 人</option>
                               </select>
                           </div>
-                          <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)">
+                          <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)" value="${lastTeammates}">
                           <div class="boss-loot-container" data-boss="${boss}"></div>
                           <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
                               ➕ 新增掉落物品
@@ -866,7 +877,6 @@
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
-                  // ⭐ 核心修正：角色更名同步歷史資料庫
                   const newCharName = action.trim();
                   if(newCharName !== charName) {
                       if(userSettings.characters.includes(newCharName)) { alert("角色名稱已存在！"); return; }
@@ -1004,7 +1014,6 @@
   async function loadRecords() {
       if(!currentUserUid) return;
       try {
-          // ⭐ 核心修正：效能防堵機制 (限制載入近一年資料)
           const oneYearAgo = getTWNow();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
           const limitDateStr = getLocalDateString(oneYearAgo);
@@ -1166,34 +1175,74 @@
       let promises = [];
       let skippedBosses = [];
 
-      // ⭐ 核心修正：容錯機制 Try...Catch...Finally 鎖定
       try {
           if (editId) {
               const boss = bossesArray[0]; 
               const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
               const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
               const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
+              
+              // ⭐ 優化 1：關聯更新 (追蹤原始日期，找出這場打王所有的關聯紀錄)
+              const originalEditedDoc = currentRecordsData.find(d => d.id === editId);
+              const originalDate = originalEditedDoc ? originalEditedDoc.date : recordDate;
+              const runRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.boss_name === boss && d.date === originalDate);
+              
+              runRecords.forEach(runDoc => {
+                  let updateData = { 
+                      date: recordDate, // 同步更新為新的日期
+                      total_players: partySize, 
+                      teammates: teamArray 
+                  };
+                  
+                  if (runDoc.item_name === "無") {
+                      updateData.crystal_income_billion = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
+                  } else {
+                      let price = runDoc.item_total_price_billion || 0;
+                      let status = runDoc.status;
+                      let payout = runDoc.payout_status;
 
-              if (editType === "routine") {
-                  const myCrystalIncome = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
-                  promises.push(updateDoc(doc(db, "DropRecords", editId), {
-                      date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, crystal_income_billion: myCrystalIncome
-                  }));
-              } else if (editType === "loot") {
-                  const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row`);
-                  if (row) {
-                      const itemName = row.querySelector('.loot-name').value.trim();
-                      const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
-                      const statusVal = row.querySelector('.loot-status').value;
+                      // 若這筆資料剛好是目前手動編輯的那筆寶物，套用新的 UI 值
+                      if (runDoc.id === editId && editType === "loot") {
+                          const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row[data-doc-id="${editId}"]`);
+                          if (row) {
+                              updateData.item_name = row.querySelector('.loot-name').value.trim();
+                              price = parseFloat(row.querySelector('.loot-price').value) || 0;
+                              status = row.querySelector('.loot-status').value;
+                              payout = status === "自用" ? "無需分帳" : "未結清";
+                              
+                              updateData.item_total_price_billion = price;
+                              updateData.status = status;
+                              updateData.payout_status = payout;
+                          }
+                      }
+                      updateData.my_dividend_billion = status === "自用" ? 0 : (price > 0 ? parseFloat((price / partySize).toFixed(2)) : 0);
+                  }
+                  promises.push(updateDoc(doc(db, "DropRecords", runDoc.id), updateData));
+              });
+
+              // ⭐ 優化 3：編輯模式下，處理「新增加」的寶物列 (這些列不會有 data-doc-id)
+              const newLootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row:not([data-doc-id])`);
+              newLootRows.forEach(row => {
+                  const itemName = row.querySelector('.loot-name').value.trim();
+                  const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                  const statusVal = row.querySelector('.loot-status').value;
+                  if (itemName) {
+                      if (!defaultItemOptions.some(d => d.value === itemName) && !userSettings.customItems.includes(itemName)) {
+                          userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
+                      }
                       let payout = statusVal === "自用" ? "無需分帳" : "未結清";
                       let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
 
-                      promises.push(updateDoc(doc(db, "DropRecords", editId), {
+                      promises.push(addDoc(collection(db, "DropRecords"), {
+                          uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
                           date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                          item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend, status: statusVal, payout_status: payout
+                          crystal_income_billion: 0, 
+                          item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend,
+                          status: statusVal, payout_status: payout
                       }));
                   }
-              }
+              });
+
           } else {
               const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
               bossesArray.forEach(boss => {
@@ -1267,10 +1316,15 @@
   cancelEditMasterBtn.addEventListener("click", resetMasterForm);
   
   function resetMasterForm() {
+      // ⭐ 優化 4：重置表單時，保留使用者最後選擇的日期 (不再無腦切回今天)
+      const currentSelectedDate = document.getElementById("input-date-master").value;
+      
       document.getElementById("form-master").reset();
       document.getElementById("edit-doc-id-master").value = "";
       document.getElementById("edit-type-master").value = "";
-      document.getElementById("input-date-master").value = getLocalDateString(getTWNow());
+      
+      // 復原日期
+      document.getElementById("input-date-master").value = currentSelectedDate || getLocalDateString(getTWNow());
       
       bossSelectMaster.clear();
       bossSelectMaster.unlock(); 
@@ -1302,7 +1356,7 @@
       }
 
       const btnDel = e.target.closest(".btn-delete-record");
-      if (btnDel && confirm("確定刪除此紀錄？")) { 
+      if (btnDel && confirm("確定刪除此紀錄？\n\n注意：這只會刪除單筆紀錄。\n若要刪除整場打王紀錄(包含結晶與寶物)，請逐一刪除。")) { 
           try {
               await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); 
               loadRecords(); 
@@ -1337,15 +1391,20 @@
                       addLootBtn.click(); 
                       const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${d.boss_name}"] .row`);
                       const lastRow = lootRows[lootRows.length - 1];
+                      
+                      // 替已經存在的寶物行打上標記，方便存檔時辨識「這是要 Update 的，其他沒標記的是要 addDoc 新增的」
+                      lastRow.setAttribute('data-doc-id', d.id); 
+                      
                       lastRow.querySelector('.loot-name').value = d.item_name;
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
-                      addLootBtn.style.display = "none"; lastRow.querySelector('.btn-remove-loot').style.display = "none";
+                      
+                      // 隱藏刪除鈕，避免誤刪要編輯的主體
+                      lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
-              } else if (type === "routine") {
-                  if (addLootBtn) addLootBtn.style.display = "none";
               }
-              document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (僅限更新此筆資料)"; 
+              
+              document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊伍)"; 
               saveBtnMaster.innerText = "💾 更新紀錄"; 
               saveBtnMaster.classList.replace("btn-primary", "btn-warning"); cancelEditMasterBtn.classList.remove("d-none");
               window.scrollTo({ top: 0, behavior: 'smooth' });
