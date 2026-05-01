@@ -568,15 +568,13 @@
           create: false, maxItems: null, plugins: ['remove_button'], placeholder: "搜尋目標...", render: tsRenderConfig 
       });
 
-      // 監聽選王動作，動態渲染卡片 (優化版：保留已填資料 + 折疊視圖)
+      // 監聽選王動作，動態渲染卡片
       bossSelectMaster.on('change', function(selected) {
           const container = document.getElementById('dynamic-boss-configs');
           const globalControls = document.getElementById('global-accordion-controls');
 
-          // 確保 selected 是一個陣列
           const selectedArr = Array.isArray(selected) ? selected : (selected ? [selected] : []);
 
-          // 如果全部被清空，直接清空容器並隱藏全域控制
           if (selectedArr.length === 0) {
               container.innerHTML = '';
               globalControls.classList.add('d-none');
@@ -587,7 +585,6 @@
               globalControls.classList.add('d-flex');
           }
 
-          // 1. 移除已經被取消勾選的王 (避免殘留)
           const existingCards = container.querySelectorAll('.boss-card-wrapper');
           existingCards.forEach(card => {
               const cardBoss = card.getAttribute('data-boss');
@@ -596,7 +593,6 @@
               }
           });
 
-          // 2. 針對新選取的王「追加」卡片
           selectedArr.forEach(boss => {
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
               
@@ -605,7 +601,6 @@
                   card.className = 'card mb-2 border border-secondary shadow-sm boss-card-wrapper';
                   card.setAttribute('data-boss', boss);
                   
-                  // 【UI 重構：手風琴架構】預設 body 為 d-none
                   card.innerHTML = `
                       <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center boss-card-header">
                           <span class="fw-bold mb-0">
@@ -630,7 +625,6 @@
                       </div>
                   `;
                   
-                  // 綁定單一卡片的展開/收合事件
                   const header = card.querySelector('.boss-card-header');
                   const body = card.querySelector('.boss-card-body');
                   const icon = card.querySelector('.accordion-icon');
@@ -651,7 +645,7 @@
       });
   }
 
-  // 全域控制列 (Macro View Control) 事件綁定
+  // 全域控制列
   document.getElementById('btn-expand-all').addEventListener('click', () => {
       document.querySelectorAll('.boss-card-wrapper').forEach(card => {
           card.querySelector('.boss-card-body').classList.remove('d-none');
@@ -666,7 +660,6 @@
       });
   });
 
-  // 委派事件：動態新增掉落物與刪除
   document.getElementById('dynamic-boss-configs').addEventListener('click', function(e) {
       if (e.target.classList.contains('btn-add-loot')) {
           const bossName = e.target.getAttribute('data-boss');
@@ -774,12 +767,32 @@
   document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); }); });
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
+  // 取得當前的週四到下週三的週期
   function getWeekBoundaries() {
       const now = new Date(); const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
       const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu); thisWeekStart.setHours(0, 0, 0, 0);
       const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
       return { thisWeekStart, lastWeekStart };
+  }
+
+  // ⭐ 新增：為了防呆機制，推算某個特定日期屬於的「週/月週期範圍」
+  function getCycleBoundaries(dateStr, isMonthly) {
+      const d = new Date(dateStr + "T00:00:00");
+      if (isMonthly) {
+          const start = new Date(d.getFullYear(), d.getMonth(), 1);
+          const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+          return { start, end };
+      } else {
+          const day = d.getDay();
+          const daysSinceThu = day >= 4 ? day - 4 : day + 3;
+          const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceThu);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+      }
   }
 
   function updateCountdowns() {
@@ -962,7 +975,6 @@
           }
           if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
               if (!monthlyBosses.includes(data.boss_name)) {
-                  // 只計算純結晶紀錄作為打卡數，避免因為掉寶紀錄重複計算打卡次數
                   if(data.item_name === "無") charWeeklyCount++;
               }
           }
@@ -1031,7 +1043,6 @@
       const tableBody = document.getElementById("table-body-routine");
       const weekFilter = document.getElementById("filter-week-routine").value;
       
-      // 只列出純結晶紀錄
       let filtered = currentRecordsData.filter(d => {
           if(d.character_name !== activeChar || d.item_name !== "無") return false;
           const rd = new Date(d.date + "T00:00:00");
@@ -1135,7 +1146,6 @@
       tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted">目前寶物庫空空如也</td></tr>';
   }
 
-  // 統合版儲存邏輯 (處理一次送出多隻王、多個掉落物或編輯單筆)
   const saveBtnMaster = document.getElementById("btn-save-master");
   const cancelEditMasterBtn = document.getElementById("btn-cancel-edit-master");
   
@@ -1154,11 +1164,9 @@
 
       // 編輯模式處理
       if (editId) {
-          const boss = bossesArray[0]; // 編輯模式限制只能有一隻王
+          const boss = bossesArray[0]; 
           const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
           const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
-          
-          // 【前次修正】：陣列切割後過濾掉空值，避免幽靈陣列
           const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
 
           if (editType === "routine") {
@@ -1182,28 +1190,53 @@
               }
           }
       } 
-      // 新增模式處理 (批次)
+      // ⭐ 新增模式處理 (批次) - 加入防呆機制
       else {
+          let skippedBosses = []; // 用於記錄被防呆機制排除的王
+          const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
+
           bossesArray.forEach(boss => {
               const partySizeInput = document.querySelector(`.boss-party-size[data-boss="${boss}"]`);
               const partySize = partySizeInput ? (parseInt(partySizeInput.value) || 1) : 1;
               const teammatesInput = document.querySelector(`.boss-teammates[data-boss="${boss}"]`);
               const teammatesStr = teammatesInput ? teammatesInput.value.trim() : "";
-              
-              // 【前次修正】：陣列切割後過濾掉空值，避免幽靈陣列
               const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
               const baseCrystal = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
 
-              // 1. 結晶紀錄 (只記錄一次)
-              promises.push(addDoc(collection(db, "DropRecords"), {
-                  uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
-                  date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                  crystal_income_billion: baseCrystal, item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
-                  status: "僅紀錄", payout_status: "無需分帳"
-              }));
+              // ====== 週期防呆比對邏輯 ======
+              const isMonthly = monthlyBosses.includes(boss);
+              const bounds = getCycleBoundaries(recordDate, isMonthly); // 取得選擇的日期屬於哪個週期
+              
+              const hasDuplicate = currentRecordsData.some(d => {
+                  if (d.character_name !== activeChar) return false;
+                  if (d.boss_name !== boss) return false;
+                  if (d.item_name !== "無") return false; // 只檢查有沒有建立過結晶本體
 
-              // 2. 掉落物紀錄 (遍歷該王的所有新增列)
+                  const rd = new Date(d.date + "T00:00:00");
+                  return rd >= bounds.start && rd <= bounds.end; // 檢查這筆現有紀錄是否在目標週期內
+              });
+
               const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row`);
+
+              if (hasDuplicate) {
+                  // 如果已經存過結晶，而且也沒有要新增寶物，就整隻王完全跳過
+                  if (lootRows.length === 0) {
+                      skippedBosses.push(boss);
+                      return; 
+                  }
+                  // 如果有新增寶物，那結晶就不重複存了，等下只跑「掉落物紀錄」的 push
+              } else {
+                  // 1. 結晶紀錄 (確認沒存過才新增)
+                  promises.push(addDoc(collection(db, "DropRecords"), {
+                      uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+                      date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
+                      crystal_income_billion: baseCrystal, item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
+                      status: "僅紀錄", payout_status: "無需分帳"
+                  }));
+              }
+              // ==============================
+
+              // 2. 掉落物紀錄 (遍歷該王的所有新增列，如果有掉落物照常寫入)
               lootRows.forEach(row => {
                   const itemName = row.querySelector('.loot-name').value.trim();
                   const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
@@ -1226,6 +1259,11 @@
                   }
               });
           });
+          
+          // 如果有防呆成功擋掉重複的紀錄，跳出提示讓使用者安心
+          if (skippedBosses.length > 0) {
+              alert(`🛡️ 防呆機制啟動：\n以下目標在該週期內已存過結晶，已為您自動排除重複記錄！\n\n${skippedBosses.join("、")}`);
+          }
       }
 
       await Promise.all(promises);
@@ -1241,7 +1279,6 @@
       document.getElementById("input-date-master").value = getLocalDateString(new Date());
       
       bossSelectMaster.clear();
-      // 【前次修正】：解除鎖定狀態
       bossSelectMaster.unlock(); 
       
       document.getElementById("dynamic-boss-configs").innerHTML = '';
@@ -1284,18 +1321,15 @@
           const d = currentRecordsData.find(x => x.id === docId);
           if (!d) return;
 
-          resetMasterForm(); // 清空目前表單
+          resetMasterForm();
 
           document.getElementById("edit-doc-id-master").value = docId;
           document.getElementById("edit-type-master").value = type;
           document.getElementById("input-date-master").value = d.date;
           
-          // 設定王，這會觸發 change 事件並建立動態卡片
           bossSelectMaster.setValue([d.boss_name]);
-          // 【前次修正】：鎖死下拉選單，禁止在編輯模式多選其他王
           bossSelectMaster.lock(); 
 
-          // 【前次修正】：放棄 setTimeout，改用 requestAnimationFrame 確保 DOM 已渲染
           requestAnimationFrame(() => {
               const partyInput = document.querySelector(`.boss-party-size[data-boss="${d.boss_name}"]`);
               if(partyInput) partyInput.value = d.total_players || 1;
@@ -1305,7 +1339,6 @@
 
               const addLootBtn = document.querySelector(`.btn-add-loot[data-boss="${d.boss_name}"]`);
               
-              // 【UI 重構：編輯時自動展開卡片】
               const cardBody = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .boss-card-body`);
               const cardIcon = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .accordion-icon`);
               if (cardBody) {
@@ -1315,19 +1348,17 @@
 
               if (type === "loot") {
                   if (addLootBtn) {
-                      addLootBtn.click(); // 生成一個掉落物輸入列
+                      addLootBtn.click(); 
                       const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${d.boss_name}"] .row`);
                       const lastRow = lootRows[lootRows.length - 1];
                       lastRow.querySelector('.loot-name').value = d.item_name;
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
                       
-                      // 【前次修正】：隱藏新增掉落物與刪除掉落物按鈕，確保編輯邏輯安全
                       addLootBtn.style.display = "none"; 
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
               } else if (type === "routine") {
-                  // 【前次修正】：編輯純結晶紀錄時，隱藏新增掉落物按鈕
                   if (addLootBtn) addLootBtn.style.display = "none";
               }
               
