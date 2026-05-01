@@ -218,7 +218,7 @@
                         </div>
 
                         <div id="dynamic-boss-configs" class="mt-3">
-                            </div>
+                        </div>
 
                         <div class="d-flex gap-2 mt-4">
                             <button type="button" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow-sm" id="btn-save-master">💾 批次儲存結算</button>
@@ -559,38 +559,60 @@
           create: false, maxItems: null, plugins: ['remove_button'], placeholder: "搜尋目標...", render: tsRenderConfig 
       });
 
-      // 監聽選王動作，動態渲染卡片
+      // 監聽選王動作，動態渲染卡片 (優化版：保留已填資料)
       bossSelectMaster.on('change', function(selected) {
           const container = document.getElementById('dynamic-boss-configs');
-          // 我們簡單地清空並重建，在真實複雜應用中可能需要比對差異，但這裡資料單純可以直接重繪
-          container.innerHTML = ''; 
 
-          if (!selected || selected.length === 0) return;
+          // 如果全部被清空，直接清空容器
+          if (!selected || selected.length === 0) {
+              container.innerHTML = '';
+              return;
+          }
 
-          selected.forEach(boss => {
-              const card = document.createElement('div');
-              card.className = 'card mb-3 border border-secondary shadow-sm';
-              card.innerHTML = `
-                  <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
-                      <span class="fw-bold mb-0">👑 ${boss}</span>
-                      <div class="d-flex align-items-center gap-2">
-                          <label class="mb-0 small">討伐人數:</label>
-                          <select class="form-select form-select-sm boss-party-size" data-boss="${boss}" style="width: 70px;">
-                              <option value="1">1 人</option><option value="2">2 人</option>
-                              <option value="3">3 人</option><option value="4">4 人</option>
-                              <option value="5">5 人</option><option value="6">6 人</option>
-                          </select>
+          // 確保 selected 是一個陣列
+          const selectedArr = Array.isArray(selected) ? selected : [selected];
+
+          // 1. 移除已經被取消勾選的王 (避免殘留)
+          const existingCards = container.querySelectorAll('.boss-card-wrapper');
+          existingCards.forEach(card => {
+              const cardBoss = card.getAttribute('data-boss');
+              if (!selectedArr.includes(cardBoss)) {
+                  card.remove(); // 從畫面上拔除該王的卡片
+              }
+          });
+
+          // 2. 針對新選取的王「追加」卡片，保留已經填好資料的舊卡片
+          selectedArr.forEach(boss => {
+              // 檢查畫面上是不是已經有這隻王的卡片了
+              const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
+              
+              if (!existingCard) {
+                  // 沒有的話才建立新卡片
+                  const card = document.createElement('div');
+                  card.className = 'card mb-3 border border-secondary shadow-sm boss-card-wrapper'; // 加上 boss-card-wrapper 作為選取標籤
+                  card.setAttribute('data-boss', boss); // 綁定 data-boss 給外層卡片辨識用
+                  card.innerHTML = `
+                      <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
+                          <span class="fw-bold mb-0">👑 ${boss}</span>
+                          <div class="d-flex align-items-center gap-2">
+                              <label class="mb-0 small">討伐人數:</label>
+                              <select class="form-select form-select-sm boss-party-size" data-boss="${boss}" style="width: 70px;">
+                                  <option value="1">1 人</option><option value="2">2 人</option>
+                                  <option value="3">3 人</option><option value="4">4 人</option>
+                                  <option value="5">5 人</option><option value="6">6 人</option>
+                              </select>
+                          </div>
                       </div>
-                  </div>
-                  <div class="card-body p-2 bg-light">
-                      <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)">
-                      <div class="boss-loot-container" data-boss="${boss}"></div>
-                      <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
-                          ➕ 新增掉落物品
-                      </button>
-                  </div>
-              `;
-              container.appendChild(card);
+                      <div class="card-body p-2 bg-light">
+                          <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)">
+                          <div class="boss-loot-container" data-boss="${boss}"></div>
+                          <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
+                              ➕ 新增掉落物品
+                          </button>
+                      </div>
+                  `;
+                  container.appendChild(card);
+              }
           });
       });
   }
