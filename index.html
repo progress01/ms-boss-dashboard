@@ -53,6 +53,11 @@
         .form-check-input:checked + .task-checkbox-label { color: #3498db; text-decoration: line-through; opacity: 0.7; }
         
         .routine-checkbox-label, .batch-checkbox-label { cursor: pointer; user-select: none; font-size: 0.9rem; }
+
+        /* 折疊視圖專用 CSS */
+        .boss-card-header { cursor: pointer; transition: background-color 0.2s, filter 0.2s; user-select: none; }
+        .boss-card-header:hover { filter: brightness(1.15); }
+        .accordion-icon { display: inline-block; width: 16px; text-align: center; font-size: 0.85em; transition: transform 0.2s; }
     </style>
 </head>
 <body>
@@ -217,7 +222,12 @@
                             <select id="input-boss-master" multiple placeholder="搜尋並選擇目標..."></select>
                         </div>
 
-                        <div id="dynamic-boss-configs" class="mt-3">
+                        <div id="global-accordion-controls" class="d-none justify-content-end gap-2 mb-2 mt-2 border-bottom pb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" id="btn-expand-all">⏬ 全部展開</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" id="btn-collapse-all">⏫ 全部收合</button>
+                        </div>
+
+                        <div id="dynamic-boss-configs" class="mt-2">
                         </div>
 
                         <div class="d-flex gap-2 mt-4">
@@ -559,51 +569,60 @@
           create: false, maxItems: null, plugins: ['remove_button'], placeholder: "搜尋目標...", render: tsRenderConfig 
       });
 
-      // 監聽選王動作，動態渲染卡片 (優化版：保留已填資料)
+      // 監聽選王動作，動態渲染卡片 (優化版：保留已填資料 + 折疊視圖)
       bossSelectMaster.on('change', function(selected) {
           const container = document.getElementById('dynamic-boss-configs');
-
-          // 如果全部被清空，直接清空容器
-          if (!selected || selected.length === 0) {
-              container.innerHTML = '';
-              return;
-          }
+          const globalControls = document.getElementById('global-accordion-controls');
 
           // 確保 selected 是一個陣列
-          const selectedArr = Array.isArray(selected) ? selected : [selected];
+          const selectedArr = Array.isArray(selected) ? selected : (selected ? [selected] : []);
+
+          // 如果全部被清空，直接清空容器並隱藏全域控制
+          if (selectedArr.length === 0) {
+              container.innerHTML = '';
+              globalControls.classList.add('d-none');
+              globalControls.classList.remove('d-flex');
+              return;
+          } else {
+              globalControls.classList.remove('d-none');
+              globalControls.classList.add('d-flex');
+          }
 
           // 1. 移除已經被取消勾選的王 (避免殘留)
           const existingCards = container.querySelectorAll('.boss-card-wrapper');
           existingCards.forEach(card => {
               const cardBoss = card.getAttribute('data-boss');
               if (!selectedArr.includes(cardBoss)) {
-                  card.remove(); // 從畫面上拔除該王的卡片
+                  card.remove(); 
               }
           });
 
-          // 2. 針對新選取的王「追加」卡片，保留已經填好資料的舊卡片
+          // 2. 針對新選取的王「追加」卡片
           selectedArr.forEach(boss => {
-              // 檢查畫面上是不是已經有這隻王的卡片了
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
               
               if (!existingCard) {
-                  // 沒有的話才建立新卡片
                   const card = document.createElement('div');
-                  card.className = 'card mb-3 border border-secondary shadow-sm boss-card-wrapper';
+                  card.className = 'card mb-2 border border-secondary shadow-sm boss-card-wrapper';
                   card.setAttribute('data-boss', boss);
+                  
+                  // 【UI 重構：手風琴架構】預設 body 為 d-none
                   card.innerHTML = `
-                      <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
-                          <span class="fw-bold mb-0">👑 ${boss}</span>
-                          <div class="d-flex align-items-center gap-2">
-                              <label class="mb-0 small">討伐人數:</label>
-                              <select class="form-select form-select-sm boss-party-size" data-boss="${boss}" style="width: 70px;">
+                      <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center boss-card-header">
+                          <span class="fw-bold mb-0">
+                              <span class="accordion-icon me-1">▶</span> 👑 ${boss}
+                          </span>
+                          <span class="badge bg-secondary ms-2 opacity-75" style="font-size: 0.7em;">點擊展開/收合</span>
+                      </div>
+                      <div class="card-body p-2 bg-light boss-card-body d-none">
+                          <div class="d-flex align-items-center gap-2 mb-2">
+                              <label class="mb-0 small fw-bold text-secondary">討伐人數:</label>
+                              <select class="form-select form-select-sm boss-party-size" data-boss="${boss}" style="width: 80px;">
                                   <option value="1">1 人</option><option value="2">2 人</option>
                                   <option value="3">3 人</option><option value="4">4 人</option>
                                   <option value="5">5 人</option><option value="6">6 人</option>
                               </select>
                           </div>
-                      </div>
-                      <div class="card-body p-2 bg-light">
                           <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)">
                           <div class="boss-loot-container" data-boss="${boss}"></div>
                           <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
@@ -611,11 +630,42 @@
                           </button>
                       </div>
                   `;
+                  
+                  // 綁定單一卡片的展開/收合事件
+                  const header = card.querySelector('.boss-card-header');
+                  const body = card.querySelector('.boss-card-body');
+                  const icon = card.querySelector('.accordion-icon');
+                  
+                  header.addEventListener('click', () => {
+                      if (body.classList.contains('d-none')) {
+                          body.classList.remove('d-none');
+                          icon.innerText = '▼';
+                      } else {
+                          body.classList.add('d-none');
+                          icon.innerText = '▶';
+                      }
+                  });
+
                   container.appendChild(card);
               }
           });
       });
   }
+
+  // 全域控制列 (Macro View Control) 事件綁定
+  document.getElementById('btn-expand-all').addEventListener('click', () => {
+      document.querySelectorAll('.boss-card-wrapper').forEach(card => {
+          card.querySelector('.boss-card-body').classList.remove('d-none');
+          card.querySelector('.accordion-icon').innerText = '▼';
+      });
+  });
+
+  document.getElementById('btn-collapse-all').addEventListener('click', () => {
+      document.querySelectorAll('.boss-card-wrapper').forEach(card => {
+          card.querySelector('.boss-card-body').classList.add('d-none');
+          card.querySelector('.accordion-icon').innerText = '▶';
+      });
+  });
 
   // 委派事件：動態新增掉落物與刪除
   document.getElementById('dynamic-boss-configs').addEventListener('click', function(e) {
@@ -1109,7 +1159,7 @@
           const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
           const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
           
-          // 【修正點】：陣列切割後過濾掉空值，避免幽靈陣列
+          // 【前次修正】：陣列切割後過濾掉空值，避免幽靈陣列
           const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
 
           if (editType === "routine") {
@@ -1141,7 +1191,7 @@
               const teammatesInput = document.querySelector(`.boss-teammates[data-boss="${boss}"]`);
               const teammatesStr = teammatesInput ? teammatesInput.value.trim() : "";
               
-              // 【修正點】：陣列切割後過濾掉空值，避免幽靈陣列
+              // 【前次修正】：陣列切割後過濾掉空值，避免幽靈陣列
               const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
               const baseCrystal = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
 
@@ -1192,10 +1242,13 @@
       document.getElementById("input-date-master").value = getLocalDateString(new Date());
       
       bossSelectMaster.clear();
-      // 【修正點】：解除鎖定狀態
+      // 【前次修正】：解除鎖定狀態
       bossSelectMaster.unlock(); 
       
       document.getElementById("dynamic-boss-configs").innerHTML = '';
+      
+      document.getElementById("global-accordion-controls").classList.add("d-none");
+      document.getElementById("global-accordion-controls").classList.remove("d-flex");
       
       document.getElementById("form-title-master").innerHTML = "⚔️ 討伐結算中心"; 
       saveBtnMaster.innerText = "💾 批次儲存結算"; 
@@ -1240,10 +1293,10 @@
           
           // 設定王，這會觸發 change 事件並建立動態卡片
           bossSelectMaster.setValue([d.boss_name]);
-          // 【修正點】：鎖死下拉選單，禁止在編輯模式多選其他王
+          // 【前次修正】：鎖死下拉選單，禁止在編輯模式多選其他王
           bossSelectMaster.lock(); 
 
-          // 【修正點】：放棄 setTimeout，改用 requestAnimationFrame 確保 DOM 已渲染
+          // 【前次修正】：放棄 setTimeout，改用 requestAnimationFrame 確保 DOM 已渲染
           requestAnimationFrame(() => {
               const partyInput = document.querySelector(`.boss-party-size[data-boss="${d.boss_name}"]`);
               if(partyInput) partyInput.value = d.total_players || 1;
@@ -1252,6 +1305,14 @@
               if(teamInput) teamInput.value = (d.teammates || []).join(" ");
 
               const addLootBtn = document.querySelector(`.btn-add-loot[data-boss="${d.boss_name}"]`);
+              
+              // 【UI 重構：編輯時自動展開卡片】
+              const cardBody = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .boss-card-body`);
+              const cardIcon = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .accordion-icon`);
+              if (cardBody) {
+                  cardBody.classList.remove('d-none');
+                  if (cardIcon) cardIcon.innerText = '▼';
+              }
 
               if (type === "loot") {
                   if (addLootBtn) {
@@ -1262,12 +1323,12 @@
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
                       
-                      // 【修正點】：隱藏新增掉落物與刪除掉落物按鈕，確保編輯邏輯安全
+                      // 【前次修正】：隱藏新增掉落物與刪除掉落物按鈕，確保編輯邏輯安全
                       addLootBtn.style.display = "none"; 
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
               } else if (type === "routine") {
-                  // 【修正點】：編輯純結晶紀錄時，隱藏新增掉落物按鈕
+                  // 【前次修正】：編輯純結晶紀錄時，隱藏新增掉落物按鈕
                   if (addLootBtn) addLootBtn.style.display = "none";
               }
               
