@@ -528,7 +528,7 @@
       saveUserSettings(); renderCustomItemList(); renderItemDatalist();
   }
 
-  // 渲染 Datalist (取代原本的 TomSelect 物件選單)
+  // 渲染 Datalist
   function renderItemDatalist() {
       const datalist = document.getElementById("item-datalist");
       datalist.innerHTML = "";
@@ -589,8 +589,8 @@
               if (!existingCard) {
                   // 沒有的話才建立新卡片
                   const card = document.createElement('div');
-                  card.className = 'card mb-3 border border-secondary shadow-sm boss-card-wrapper'; // 加上 boss-card-wrapper 作為選取標籤
-                  card.setAttribute('data-boss', boss); // 綁定 data-boss 給外層卡片辨識用
+                  card.className = 'card mb-3 border border-secondary shadow-sm boss-card-wrapper';
+                  card.setAttribute('data-boss', boss);
                   card.innerHTML = `
                       <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
                           <span class="fw-bold mb-0">👑 ${boss}</span>
@@ -1108,7 +1108,9 @@
           const boss = bossesArray[0]; // 編輯模式限制只能有一隻王
           const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
           const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
-          const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/) : [];
+          
+          // 【修正點】：陣列切割後過濾掉空值，避免幽靈陣列
+          const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
 
           if (editType === "routine") {
               const myCrystalIncome = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
@@ -1138,7 +1140,9 @@
               const partySize = partySizeInput ? (parseInt(partySizeInput.value) || 1) : 1;
               const teammatesInput = document.querySelector(`.boss-teammates[data-boss="${boss}"]`);
               const teammatesStr = teammatesInput ? teammatesInput.value.trim() : "";
-              const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/) : [];
+              
+              // 【修正點】：陣列切割後過濾掉空值，避免幽靈陣列
+              const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
               const baseCrystal = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
 
               // 1. 結晶紀錄 (只記錄一次)
@@ -1186,7 +1190,11 @@
       document.getElementById("edit-doc-id-master").value = "";
       document.getElementById("edit-type-master").value = "";
       document.getElementById("input-date-master").value = getLocalDateString(new Date());
+      
       bossSelectMaster.clear();
+      // 【修正點】：解除鎖定狀態
+      bossSelectMaster.unlock(); 
+      
       document.getElementById("dynamic-boss-configs").innerHTML = '';
       
       document.getElementById("form-title-master").innerHTML = "⚔️ 討伐結算中心"; 
@@ -1219,7 +1227,8 @@
 
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
-          const docId = btnEdit.getAttribute("data-id"); const type = btnEdit.getAttribute("data-type");
+          const docId = btnEdit.getAttribute("data-id"); 
+          const type = btnEdit.getAttribute("data-type");
           const d = currentRecordsData.find(x => x.id === docId);
           if (!d) return;
 
@@ -1231,17 +1240,20 @@
           
           // 設定王，這會觸發 change 事件並建立動態卡片
           bossSelectMaster.setValue([d.boss_name]);
+          // 【修正點】：鎖死下拉選單，禁止在編輯模式多選其他王
+          bossSelectMaster.lock(); 
 
-          // 等待 DOM 生成完畢
-          setTimeout(() => {
+          // 【修正點】：放棄 setTimeout，改用 requestAnimationFrame 確保 DOM 已渲染
+          requestAnimationFrame(() => {
               const partyInput = document.querySelector(`.boss-party-size[data-boss="${d.boss_name}"]`);
               if(partyInput) partyInput.value = d.total_players || 1;
               
               const teamInput = document.querySelector(`.boss-teammates[data-boss="${d.boss_name}"]`);
               if(teamInput) teamInput.value = (d.teammates || []).join(" ");
 
+              const addLootBtn = document.querySelector(`.btn-add-loot[data-boss="${d.boss_name}"]`);
+
               if (type === "loot") {
-                  const addLootBtn = document.querySelector(`.btn-add-loot[data-boss="${d.boss_name}"]`);
                   if (addLootBtn) {
                       addLootBtn.click(); // 生成一個掉落物輸入列
                       const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${d.boss_name}"] .row`);
@@ -1249,7 +1261,14 @@
                       lastRow.querySelector('.loot-name').value = d.item_name;
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
+                      
+                      // 【修正點】：隱藏新增掉落物與刪除掉落物按鈕，確保編輯邏輯安全
+                      addLootBtn.style.display = "none"; 
+                      lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
+              } else if (type === "routine") {
+                  // 【修正點】：編輯純結晶紀錄時，隱藏新增掉落物按鈕
+                  if (addLootBtn) addLootBtn.style.display = "none";
               }
               
               document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (僅限更新此筆資料)"; 
@@ -1257,7 +1276,7 @@
               saveBtnMaster.classList.replace("btn-primary", "btn-warning");
               cancelEditMasterBtn.classList.remove("d-none");
               window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
+          });
       }
   });
 
