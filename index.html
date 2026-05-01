@@ -509,6 +509,16 @@
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   
+  // ----------------------------------------------------
+  // 🌟 全局時間格式化小工具 (解決時區偏移問題)
+  // ----------------------------------------------------
+  function getLocalDateString(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+  }
+  
   let currentUserUid = null; 
   let bossSelectRoutine, bossSelectLoot, itemSelect; 
   
@@ -576,8 +586,9 @@
       renderSidebar();
       
       const today = new Date();
-      document.getElementById("overview-start-date").value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-      document.getElementById("overview-end-date").value = today.toISOString().split('T')[0];
+      // 使用 getLocalDateString 修復時區問題
+      document.getElementById("overview-start-date").value = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1));
+      document.getElementById("overview-end-date").value = getLocalDateString(today);
 
       loadRecords();
   }
@@ -732,8 +743,9 @@
               bossSelectRoutine = new TomSelect("#input-boss-routine", { create: false, maxItems: null, plugins: ['remove_button'], placeholder: "選擇目標 (可多選)...", render: tsRenderConfig });
               bossSelectLoot = new TomSelect("#input-boss-loot", { create: false, maxItems: 1, placeholder: "選擇掉落的目標...", render: tsRenderConfig });
           }
-          document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; 
-          document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; 
+          // 使用 getLocalDateString 修復時區問題
+          document.getElementById("input-date-routine").value = getLocalDateString(new Date()); 
+          document.getElementById("input-date-loot").value = getLocalDateString(new Date()); 
           await loadUserSettings();
       } else {
           currentUserUid = null; showScreen('login'); 
@@ -878,7 +890,8 @@
       
       let currDate = new Date(startDate);
       while(currDate <= today) {
-          let dateStr = currDate.toISOString().split('T')[0]; 
+          // 使用 getLocalDateString 修復時區問題
+          let dateStr = getLocalDateString(currDate); 
           let dropData = dateDrops[dateStr];
           let cell = document.createElement("div"); cell.className = "heatmap-cell";
           
@@ -928,7 +941,6 @@
 
       let accountCrystal = 0; let accountDividend = 0; let charWeeklyCount = 0;
       
-      // 💡 定義不計入每週 12 隻扣打的「月王」例外名單
       const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"]; 
 
       currentRecordsData.forEach(data => {
@@ -940,7 +952,6 @@
               }
           }
           if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
-              // 💡 排除月王，不計入 12 隻
               if (!monthlyBosses.includes(data.boss_name)) {
                   charWeeklyCount++;
               }
@@ -1150,7 +1161,8 @@
   cancelEditRoutineBtn.addEventListener("click", resetRoutineForm);
   function resetRoutineForm() {
       document.getElementById("form-routine").reset(); document.getElementById("edit-doc-id-routine").value = "";
-      document.getElementById("input-date-routine").value = new Date().toISOString().split('T')[0]; document.getElementById("input-party-size-routine").value = "1";
+      // 使用 getLocalDateString 修復時區問題
+      document.getElementById("input-date-routine").value = getLocalDateString(new Date()); document.getElementById("input-party-size-routine").value = "1";
       loadRoutineBosses(); 
       document.getElementById("form-title-routine").innerText = "新增討伐紀錄 (無掉寶)"; saveBtnRoutine.innerText = "💾 儲存本週紀錄"; saveBtnRoutine.classList.replace("btn-primary", "btn-dark"); cancelEditRoutineBtn.classList.add("d-none"); saveBtnRoutine.disabled = false;
       document.getElementById("btn-manage-routine").classList.remove("d-none");
@@ -1198,7 +1210,8 @@
   cancelEditLootBtn.addEventListener("click", resetLootForm);
   function resetLootForm() {
       document.getElementById("form-loot").reset(); document.getElementById("edit-doc-id-loot").value = "";
-      document.getElementById("input-date-loot").value = new Date().toISOString().split('T')[0]; document.getElementById("input-party-size-loot").value = "1";
+      // 使用 getLocalDateString 修復時區問題
+      document.getElementById("input-date-loot").value = getLocalDateString(new Date()); document.getElementById("input-party-size-loot").value = "1";
       if(bossSelectLoot) bossSelectLoot.clear(); if(itemSelect) itemSelect.clear();
       document.getElementById("form-title-loot").innerText = "新增掉寶紀錄"; saveBtnLoot.innerText = "💾 儲存掉寶"; cancelEditLootBtn.classList.add("d-none"); saveBtnLoot.disabled = false;
   }
