@@ -54,7 +54,6 @@
         
         .routine-checkbox-label, .batch-checkbox-label { cursor: pointer; user-select: none; font-size: 0.9rem; }
 
-        /* 折疊視圖專用 CSS */
         .boss-card-header { cursor: pointer; transition: background-color 0.2s, filter 0.2s; user-select: none; }
         .boss-card-header:hover { filter: brightness(1.15); }
         .accordion-icon { display: inline-block; width: 16px; text-align: center; font-size: 0.85em; transition: transform 0.2s; }
@@ -128,7 +127,7 @@
                             <option value="this_week">本週週期 (四~三)</option>
                             <option value="last_week">上週週期</option>
                             <option value="this_month">本月</option>
-                            <option value="all">累計全部</option>
+                            <option value="all">累計全部(近一年)</option>
                             <option value="custom">自訂區間...</option>
                         </select>
                         <input type="date" id="overview-start-date" class="form-control form-control-sm w-auto d-none shadow-sm">
@@ -245,7 +244,7 @@
                         <select class="form-select form-select-sm w-auto" id="filter-week-routine">
                             <option value="this_week">本週</option>
                             <option value="last_week">上週</option>
-                            <option value="all">全部</option>
+                            <option value="all">近一年</option>
                         </select>
                     </div>
                     <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
@@ -401,7 +400,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
   const firebaseConfig = {
@@ -419,6 +418,13 @@
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   
+  // ⭐ 核心修正：統一時間基準 (強制轉換為 UTC+8 台灣時間)
+  function getTWNow() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      return new Date(utc + (3600000 * 8));
+  }
+
   function getLocalDateString(date) {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -492,7 +498,7 @@
       renderCustomItemList();
       renderSidebar();
       
-      const today = new Date();
+      const today = getTWNow();
       document.getElementById("overview-start-date").value = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1));
       document.getElementById("overview-end-date").value = getLocalDateString(today);
 
@@ -537,7 +543,6 @@
       saveUserSettings(); renderCustomItemList(); renderItemDatalist();
   }
 
-  // 渲染 Datalist
   function renderItemDatalist() {
       const datalist = document.getElementById("item-datalist");
       datalist.innerHTML = "";
@@ -559,7 +564,6 @@
       }
   };
 
-  // 初始化主表單選單
   function initMasterSelect() {
       if (bossSelectMaster) { bossSelectMaster.destroy(); } 
       const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
@@ -568,7 +572,6 @@
           create: false, maxItems: null, plugins: ['remove_button'], placeholder: "搜尋目標...", render: tsRenderConfig 
       });
 
-      // 監聽選王動作，動態渲染卡片
       bossSelectMaster.on('change', function(selected) {
           const container = document.getElementById('dynamic-boss-configs');
           const globalControls = document.getElementById('global-accordion-controls');
@@ -588,14 +591,11 @@
           const existingCards = container.querySelectorAll('.boss-card-wrapper');
           existingCards.forEach(card => {
               const cardBoss = card.getAttribute('data-boss');
-              if (!selectedArr.includes(cardBoss)) {
-                  card.remove(); 
-              }
+              if (!selectedArr.includes(cardBoss)) { card.remove(); }
           });
 
           selectedArr.forEach(boss => {
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
-              
               if (!existingCard) {
                   const card = document.createElement('div');
                   card.className = 'card mb-2 border border-secondary shadow-sm boss-card-wrapper';
@@ -631,21 +631,17 @@
                   
                   header.addEventListener('click', () => {
                       if (body.classList.contains('d-none')) {
-                          body.classList.remove('d-none');
-                          icon.innerText = '▼';
+                          body.classList.remove('d-none'); icon.innerText = '▼';
                       } else {
-                          body.classList.add('d-none');
-                          icon.innerText = '▶';
+                          body.classList.add('d-none'); icon.innerText = '▶';
                       }
                   });
-
                   container.appendChild(card);
               }
           });
       });
   }
 
-  // 全域控制列
   document.getElementById('btn-expand-all').addEventListener('click', () => {
       document.querySelectorAll('.boss-card-wrapper').forEach(card => {
           card.querySelector('.boss-card-body').classList.remove('d-none');
@@ -686,10 +682,7 @@
           `;
           lootContainer.appendChild(row);
       }
-
-      if (e.target.classList.contains('btn-remove-loot')) {
-          e.target.closest('.row').remove();
-      }
+      if (e.target.classList.contains('btn-remove-loot')) { e.target.closest('.row').remove(); }
   });
 
   function loadRoutineBosses() {
@@ -733,11 +726,13 @@
       let selected = [];
       document.querySelectorAll(".routine-checkbox:checked").forEach(chk => { selected.push(chk.value); });
       userSettings.routineBosses[activeChar] = selected;
-      await saveUserSettings();
       
-      const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
-      initMasterSelect();
-      loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
+      try {
+          await saveUserSettings();
+          const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
+          initMasterSelect();
+          loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
+      } catch(e) { alert("常規儲存失敗！"); }
   });
 
   document.getElementById("batchModal").addEventListener("show.bs.modal", () => {
@@ -757,7 +752,7 @@
       if (user) {
           currentUserUid = user.uid; document.getElementById("user-name").innerText = user.displayName;
           if (!bossSelectMaster) { initMasterSelect(); }
-          document.getElementById("input-date-master").value = getLocalDateString(new Date()); 
+          document.getElementById("input-date-master").value = getLocalDateString(getTWNow()); 
           await loadUserSettings();
       } else {
           currentUserUid = null; showScreen('login'); 
@@ -767,16 +762,14 @@
   document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); }); });
   document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
 
-  // 取得當前的週四到下週三的週期
   function getWeekBoundaries() {
-      const now = new Date(); const currentDay = now.getDay(); 
+      const now = getTWNow(); const currentDay = now.getDay(); 
       const daysSinceThu = currentDay >= 4 ? currentDay - 4 : currentDay + 3;
       const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceThu); thisWeekStart.setHours(0, 0, 0, 0);
       const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
       return { thisWeekStart, lastWeekStart };
   }
 
-  // ⭐ 新增：為了防呆機制，推算某個特定日期屬於的「週/月週期範圍」
   function getCycleBoundaries(dateStr, isMonthly) {
       const d = new Date(dateStr + "T00:00:00");
       if (isMonthly) {
@@ -786,17 +779,14 @@
       } else {
           const day = d.getDay();
           const daysSinceThu = day >= 4 ? day - 4 : day + 3;
-          const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceThu);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(start);
-          end.setDate(start.getDate() + 6);
-          end.setHours(23, 59, 59, 999);
+          const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceThu); start.setHours(0, 0, 0, 0);
+          const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
           return { start, end };
       }
   }
 
   function updateCountdowns() {
-      const now = new Date();
+      const now = getTWNow();
       let daysToNextThu = (4 - now.getDay() + 7) % 7; 
       let nextThu = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextThu); nextThu.setHours(0, 0, 0, 0);
       if (now.getTime() >= nextThu.getTime()) nextThu.setDate(nextThu.getDate() + 7);
@@ -842,7 +832,6 @@
 
   function renderSidebar() {
       const charListContainer = document.getElementById("character-list"); charListContainer.innerHTML = ""; 
-      
       document.getElementById("dashboard-title").innerText = activeChar; 
       document.getElementById("mobile-active-char").innerText = `⚔️ ${activeChar}`; 
 
@@ -863,9 +852,11 @@
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
-          editBtn.addEventListener("click", (e) => {
-              e.preventDefault(); e.stopPropagation(); const action = prompt(`修改角色名稱：\n(清空可刪除)`, charName);
+          editBtn.addEventListener("click", async (e) => {
+              e.preventDefault(); e.stopPropagation(); 
+              const action = prompt(`修改角色名稱：\n(清空可刪除)`, charName);
               if (action === null) return; 
+              
               if (action.trim() === "") { 
                   if (confirm(`確定刪除【${charName}】？\n\n注意：這只會移除選單，過去的紀錄仍會保留在總計中。`)) { 
                       userSettings.characters.splice(index, 1); 
@@ -875,9 +866,30 @@
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
-                  userSettings.characters[index] = action.trim(); 
-                  if (activeChar === charName) { activeChar = action.trim(); userSettings.lastActiveChar = activeChar; }
-                  saveUserSettings(); renderSidebar(); loadRecords(); 
+                  // ⭐ 核心修正：角色更名同步歷史資料庫
+                  const newCharName = action.trim();
+                  if(newCharName !== charName) {
+                      if(userSettings.characters.includes(newCharName)) { alert("角色名稱已存在！"); return; }
+                      const oldCharName = charName;
+                      userSettings.characters[index] = newCharName; 
+                      if (activeChar === oldCharName) { activeChar = newCharName; userSettings.lastActiveChar = activeChar; }
+                      
+                      try {
+                          const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid), where("character_name", "==", oldCharName));
+                          const qs = await getDocs(q);
+                          const batch = writeBatch(db);
+                          qs.forEach(d => {
+                              const ref = doc(db, "DropRecords", d.id);
+                              batch.update(ref, { character_name: newCharName, uid_char_key: `${currentUserUid}_${newCharName}` });
+                          });
+                          await batch.commit();
+                          await saveUserSettings(); 
+                          renderSidebar(); loadRecords(); 
+                      } catch (err) {
+                          console.error("更新歷史紀錄失敗", err);
+                          alert("資料庫同步失敗，請重試！");
+                      }
+                  }
               }
               hideOffcanvas();
           });
@@ -886,13 +898,16 @@
       renderWeeklyTasks(); loadRoutineBosses(); 
   }
   
-  document.getElementById("btn-add-char").addEventListener("click", (e) => { 
+  document.getElementById("btn-add-char").addEventListener("click", async (e) => { 
       e.preventDefault(); const newChar = prompt("新角色名稱："); 
       if (newChar && newChar.trim() !== "") { 
           const charName = newChar.trim();
           if (!userSettings.characters.includes(charName)) { userSettings.characters.push(charName); }
-          activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings(); 
-          renderSidebar(); loadRecords(); hideOffcanvas();
+          activeChar = charName; userSettings.lastActiveChar = activeChar; 
+          try {
+              await saveUserSettings(); 
+              renderSidebar(); loadRecords(); hideOffcanvas();
+          } catch(err) { alert("新增角色失敗！"); }
       } 
   });
 
@@ -900,7 +915,7 @@
       const heatmapGrid = document.getElementById("heatmap-grid"); 
       if(!heatmapGrid) return;
       heatmapGrid.innerHTML = "";
-      const today = new Date(); today.setHours(0,0,0,0);
+      const today = getTWNow(); today.setHours(0,0,0,0);
       let startDate = new Date(today); startDate.setDate(today.getDate() - (16 * 7) - today.getDay()); 
       
       let dateDrops = {};
@@ -919,15 +934,11 @@
           let cell = document.createElement("div"); cell.className = "heatmap-cell";
           
           if(!dropData) {
-              cell.classList.add("hc-0"); 
-              cell.title = `${dateStr} 無掉寶`;
+              cell.classList.add("hc-0"); cell.title = `${dateStr} 無掉寶`;
           } else {
               let val = dropData.value;
-              if(val <= 10) cell.classList.add("hc-1"); 
-              else if(val <= 50) cell.classList.add("hc-2"); 
-              else if(val <= 100) cell.classList.add("hc-3"); 
-              else cell.classList.add("hc-4"); 
-              
+              if(val <= 10) cell.classList.add("hc-1"); else if(val <= 50) cell.classList.add("hc-2"); 
+              else if(val <= 100) cell.classList.add("hc-3"); else cell.classList.add("hc-4"); 
               cell.title = `${dateStr} 掉落了 ${dropData.count} 個寶物 (價值 ${val.toFixed(2)} 億)`; 
           }
           heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
@@ -943,7 +954,7 @@
 
       let start, end;
       const boundaries = getWeekBoundaries();
-      const now = new Date();
+      const now = getTWNow();
 
       if (rangeType === "custom") {
           startDateInput.classList.remove("d-none"); endDateInput.classList.remove("d-none"); separator.classList.remove("d-none");
@@ -952,7 +963,7 @@
       } else {
           startDateInput.classList.add("d-none"); endDateInput.classList.add("d-none"); separator.classList.add("d-none");
           if (rangeType === "this_week") {
-              start = boundaries.thisWeekStart; end = new Date(); end.setHours(23, 59, 59, 999);
+              start = boundaries.thisWeekStart; end = new Date(now); end.setHours(23, 59, 59, 999);
           } else if (rangeType === "last_week") {
               start = boundaries.lastWeekStart; end = new Date(boundaries.thisWeekStart); end.setTime(end.getTime() - 1);
           } else if (rangeType === "this_month") {
@@ -974,8 +985,8 @@
               }
           }
           if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
-              if (!monthlyBosses.includes(data.boss_name)) {
-                  if(data.item_name === "無") charWeeklyCount++;
+              if (!monthlyBosses.includes(data.boss_name) && data.item_name === "無") {
+                  charWeeklyCount++;
               }
           }
       });
@@ -993,7 +1004,15 @@
   async function loadRecords() {
       if(!currentUserUid) return;
       try {
-          const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
+          // ⭐ 核心修正：效能防堵機制 (限制載入近一年資料)
+          const oneYearAgo = getTWNow();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          const limitDateStr = getLocalDateString(oneYearAgo);
+
+          const q = query(collection(db, "DropRecords"), 
+                          where("uid", "==", currentUserUid),
+                          where("date", ">=", limitDateStr));
+          
           const querySnapshot = await getDocs(q);
           
           let records = []; const boundaries = getWeekBoundaries();
@@ -1007,7 +1026,10 @@
           renderRoutineTable(boundaries);
           renderLootTable();
 
-      } catch (error) { console.error(error); }
+      } catch (error) { 
+          console.error("載入紀錄失敗:", error); 
+          alert("無法連線至資料庫，請重整頁面！");
+      }
   }
 
   function updateCharacterStats(boundaries) {
@@ -1016,7 +1038,6 @@
 
       currentRecordsData.forEach(data => {
           if (data.character_name !== activeChar) return;
-
           const rd = new Date(data.date + "T00:00:00");
           let inDateRange = true;
           if (weekFilter === "this_week") inDateRange = rd >= boundaries.thisWeekStart;
@@ -1097,30 +1118,13 @@
 
       let html = "";
       lootRecords.forEach(data => {
-          let sBadge = "";
-          if (data.status === "自用") {
-              sBadge = `<span class="status-badge bg-self">💎 自用</span>`;
-          } else if (data.status === "待售出") {
-              sBadge = `<span class="status-badge bg-pending">⏳ 待售出</span>`;
-          } else {
-              sBadge = `<span class="status-badge bg-sold">✔️ 已售出</span>`;
-          }
-          
-          let pBadge = "";
-          if (data.status !== "自用" && data.payout_status !== "無需分帳") {
-              pBadge = data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled mt-1">⚠️ 未結清</span>` : `<span class="status-badge bg-settled mt-1">✔️ 已結清</span>`;
-          }
+          let sBadge = data.status === "自用" ? `<span class="status-badge bg-self">💎 自用</span>` : (data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`);
+          let pBadge = (data.status !== "自用" && data.payout_status !== "無需分帳") ? (data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled mt-1">⚠️ 未結清</span>` : `<span class="status-badge bg-settled mt-1">✔️ 已結清</span>`) : "";
 
           let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
-          
           let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
-          let badgeHtml = isRoutine 
-              ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` 
-              : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
-
-          let settleBtn = (data.payout_status === "未結清" && data.status !== "自用") 
-              ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1" data-id="${data.id}">✅ 結清</button>` 
-              : '';
+          let badgeHtml = isRoutine ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
+          let settleBtn = (data.payout_status === "未結清" && data.status !== "自用") ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1" data-id="${data.id}">✅ 結清</button>` : '';
 
           html += `
               <tr>
@@ -1156,118 +1160,108 @@
       const editType = document.getElementById("edit-type-master").value;
       
       let bossesArray = Array.isArray(selectedBosses) ? selectedBosses : (selectedBosses ? [selectedBosses] : []);
-
       if (bossesArray.length === 0) { alert("請至少選擇一隻討伐目標！"); return; }
       
       saveBtnMaster.innerText = "處理中..."; saveBtnMaster.disabled = true;
       let promises = [];
+      let skippedBosses = [];
 
-      // 編輯模式處理
-      if (editId) {
-          const boss = bossesArray[0]; 
-          const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
-          const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
-          const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
-
-          if (editType === "routine") {
-              const myCrystalIncome = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
-              promises.push(updateDoc(doc(db, "DropRecords", editId), {
-                  date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, crystal_income_billion: myCrystalIncome
-              }));
-          } else if (editType === "loot") {
-              const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row`);
-              if (row) {
-                  const itemName = row.querySelector('.loot-name').value.trim();
-                  const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
-                  const statusVal = row.querySelector('.loot-status').value;
-                  let payout = statusVal === "自用" ? "無需分帳" : "未結清";
-                  let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
-
-                  promises.push(updateDoc(doc(db, "DropRecords", editId), {
-                      date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                      item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend, status: statusVal, payout_status: payout
-                  }));
-              }
-          }
-      } 
-      // ⭐ 新增模式處理 (批次) - 加入防呆機制
-      else {
-          let skippedBosses = []; // 用於記錄被防呆機制排除的王
-          const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
-
-          bossesArray.forEach(boss => {
-              const partySizeInput = document.querySelector(`.boss-party-size[data-boss="${boss}"]`);
-              const partySize = partySizeInput ? (parseInt(partySizeInput.value) || 1) : 1;
-              const teammatesInput = document.querySelector(`.boss-teammates[data-boss="${boss}"]`);
-              const teammatesStr = teammatesInput ? teammatesInput.value.trim() : "";
+      // ⭐ 核心修正：容錯機制 Try...Catch...Finally 鎖定
+      try {
+          if (editId) {
+              const boss = bossesArray[0]; 
+              const partySize = parseInt(document.querySelector(`.boss-party-size[data-boss="${boss}"]`).value) || 1;
+              const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
               const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
-              const baseCrystal = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
 
-              // ====== 週期防呆比對邏輯 ======
-              const isMonthly = monthlyBosses.includes(boss);
-              const bounds = getCycleBoundaries(recordDate, isMonthly); // 取得選擇的日期屬於哪個週期
-              
-              const hasDuplicate = currentRecordsData.some(d => {
-                  if (d.character_name !== activeChar) return false;
-                  if (d.boss_name !== boss) return false;
-                  if (d.item_name !== "無") return false; // 只檢查有沒有建立過結晶本體
-
-                  const rd = new Date(d.date + "T00:00:00");
-                  return rd >= bounds.start && rd <= bounds.end; // 檢查這筆現有紀錄是否在目標週期內
-              });
-
-              const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row`);
-
-              if (hasDuplicate) {
-                  // 如果已經存過結晶，而且也沒有要新增寶物，就整隻王完全跳過
-                  if (lootRows.length === 0) {
-                      skippedBosses.push(boss);
-                      return; 
-                  }
-                  // 如果有新增寶物，那結晶就不重複存了，等下只跑「掉落物紀錄」的 push
-              } else {
-                  // 1. 結晶紀錄 (確認沒存過才新增)
-                  promises.push(addDoc(collection(db, "DropRecords"), {
-                      uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
-                      date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                      crystal_income_billion: baseCrystal, item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
-                      status: "僅紀錄", payout_status: "無需分帳"
+              if (editType === "routine") {
+                  const myCrystalIncome = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
+                  promises.push(updateDoc(doc(db, "DropRecords", editId), {
+                      date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, crystal_income_billion: myCrystalIncome
                   }));
-              }
-              // ==============================
-
-              // 2. 掉落物紀錄 (遍歷該王的所有新增列，如果有掉落物照常寫入)
-              lootRows.forEach(row => {
-                  const itemName = row.querySelector('.loot-name').value.trim();
-                  const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
-                  const statusVal = row.querySelector('.loot-status').value;
-                  
-                  if (itemName) {
-                      if (!defaultItemOptions.some(d => d.value === itemName) && !userSettings.customItems.includes(itemName)) {
-                          userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
-                      }
+              } else if (editType === "loot") {
+                  const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row`);
+                  if (row) {
+                      const itemName = row.querySelector('.loot-name').value.trim();
+                      const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                      const statusVal = row.querySelector('.loot-status').value;
                       let payout = statusVal === "自用" ? "無需分帳" : "未結清";
                       let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
 
+                      promises.push(updateDoc(doc(db, "DropRecords", editId), {
+                          date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
+                          item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend, status: statusVal, payout_status: payout
+                      }));
+                  }
+              }
+          } else {
+              const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
+              bossesArray.forEach(boss => {
+                  const partySizeInput = document.querySelector(`.boss-party-size[data-boss="${boss}"]`);
+                  const partySize = partySizeInput ? (parseInt(partySizeInput.value) || 1) : 1;
+                  const teammatesInput = document.querySelector(`.boss-teammates[data-boss="${boss}"]`);
+                  const teammatesStr = teammatesInput ? teammatesInput.value.trim() : "";
+                  const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
+                  const baseCrystal = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
+
+                  const isMonthly = monthlyBosses.includes(boss);
+                  const bounds = getCycleBoundaries(recordDate, isMonthly); 
+                  
+                  const hasDuplicate = currentRecordsData.some(d => {
+                      if (d.character_name !== activeChar || d.boss_name !== boss || d.item_name !== "無") return false;
+                      const rd = new Date(d.date + "T00:00:00");
+                      return rd >= bounds.start && rd <= bounds.end; 
+                  });
+
+                  const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row`);
+
+                  if (hasDuplicate) {
+                      if (lootRows.length === 0) { skippedBosses.push(boss); return; }
+                  } else {
                       promises.push(addDoc(collection(db, "DropRecords"), {
                           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
                           date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                          crystal_income_billion: 0, // 防重複計算
-                          item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend,
-                          status: statusVal, payout_status: payout
+                          crystal_income_billion: baseCrystal, item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
+                          status: "僅紀錄", payout_status: "無需分帳"
                       }));
                   }
+
+                  lootRows.forEach(row => {
+                      const itemName = row.querySelector('.loot-name').value.trim();
+                      const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                      const statusVal = row.querySelector('.loot-status').value;
+                      
+                      if (itemName) {
+                          if (!defaultItemOptions.some(d => d.value === itemName) && !userSettings.customItems.includes(itemName)) {
+                              userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
+                          }
+                          let payout = statusVal === "自用" ? "無需分帳" : "未結清";
+                          let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
+
+                          promises.push(addDoc(collection(db, "DropRecords"), {
+                              uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
+                              date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
+                              crystal_income_billion: 0, 
+                              item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend,
+                              status: statusVal, payout_status: payout
+                          }));
+                      }
+                  });
               });
-          });
-          
-          // 如果有防呆成功擋掉重複的紀錄，跳出提示讓使用者安心
+          }
+
+          await Promise.all(promises);
+
           if (skippedBosses.length > 0) {
               alert(`🛡️ 防呆機制啟動：\n以下目標在該週期內已存過結晶，已為您自動排除重複記錄！\n\n${skippedBosses.join("、")}`);
           }
+      } catch (error) {
+          console.error("寫入失敗:", error);
+          alert("資料儲存發生異常，請檢查網路狀態後再試！");
+      } finally {
+          resetMasterForm(); 
+          loadRecords();
       }
-
-      await Promise.all(promises);
-      resetMasterForm(); loadRecords(); 
   });
 
   cancelEditMasterBtn.addEventListener("click", resetMasterForm);
@@ -1276,11 +1270,10 @@
       document.getElementById("form-master").reset();
       document.getElementById("edit-doc-id-master").value = "";
       document.getElementById("edit-type-master").value = "";
-      document.getElementById("input-date-master").value = getLocalDateString(new Date());
+      document.getElementById("input-date-master").value = getLocalDateString(getTWNow());
       
       bossSelectMaster.clear();
       bossSelectMaster.unlock(); 
-      
       document.getElementById("dynamic-boss-configs").innerHTML = '';
       
       document.getElementById("global-accordion-controls").classList.add("d-none");
@@ -1293,58 +1286,51 @@
       saveBtnMaster.disabled = false;
   }
 
-  // 編輯與結清操作
   document.addEventListener("click", async (e) => {
       const btnSettle = e.target.closest(".btn-quick-settle");
       if (btnSettle) {
-          e.preventDefault();
-          const docId = btnSettle.getAttribute("data-id");
+          e.preventDefault(); const docId = btnSettle.getAttribute("data-id");
           btnSettle.innerText = "..."; btnSettle.disabled = true;
           try {
               await updateDoc(doc(db, "DropRecords", docId), { payout_status: "已結清", status: "已售出" });
               loadRecords(); 
-          } catch (error) { console.error("結清失敗:", error); btnSettle.innerText = "✅"; btnSettle.disabled = false; }
+          } catch (error) { 
+              console.error("結清失敗:", error); alert("結清失敗，請稍後重試！"); 
+              btnSettle.innerText = "✅ 結清"; btnSettle.disabled = false; 
+          }
           return;
       }
 
       const btnDel = e.target.closest(".btn-delete-record");
       if (btnDel && confirm("確定刪除此紀錄？")) { 
-          await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); 
-          loadRecords(); 
+          try {
+              await deleteDoc(doc(db, "DropRecords", btnDel.getAttribute("data-id"))); 
+              loadRecords(); 
+          } catch(err) { alert("刪除失敗！"); }
           return; 
       }
 
       const btnEdit = e.target.closest(".btn-edit-record");
       if (btnEdit) {
-          const docId = btnEdit.getAttribute("data-id"); 
-          const type = btnEdit.getAttribute("data-type");
+          const docId = btnEdit.getAttribute("data-id"); const type = btnEdit.getAttribute("data-type");
           const d = currentRecordsData.find(x => x.id === docId);
           if (!d) return;
 
           resetMasterForm();
-
-          document.getElementById("edit-doc-id-master").value = docId;
-          document.getElementById("edit-type-master").value = type;
+          document.getElementById("edit-doc-id-master").value = docId; document.getElementById("edit-type-master").value = type;
           document.getElementById("input-date-master").value = d.date;
           
-          bossSelectMaster.setValue([d.boss_name]);
-          bossSelectMaster.lock(); 
+          bossSelectMaster.setValue([d.boss_name]); bossSelectMaster.lock(); 
 
           requestAnimationFrame(() => {
               const partyInput = document.querySelector(`.boss-party-size[data-boss="${d.boss_name}"]`);
               if(partyInput) partyInput.value = d.total_players || 1;
-              
               const teamInput = document.querySelector(`.boss-teammates[data-boss="${d.boss_name}"]`);
               if(teamInput) teamInput.value = (d.teammates || []).join(" ");
-
               const addLootBtn = document.querySelector(`.btn-add-loot[data-boss="${d.boss_name}"]`);
-              
               const cardBody = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .boss-card-body`);
               const cardIcon = document.querySelector(`.boss-card-wrapper[data-boss="${d.boss_name}"] .accordion-icon`);
-              if (cardBody) {
-                  cardBody.classList.remove('d-none');
-                  if (cardIcon) cardIcon.innerText = '▼';
-              }
+              if (cardBody) { cardBody.classList.remove('d-none'); if (cardIcon) cardIcon.innerText = '▼'; }
 
               if (type === "loot") {
                   if (addLootBtn) {
@@ -1354,18 +1340,14 @@
                       lastRow.querySelector('.loot-name').value = d.item_name;
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
-                      
-                      addLootBtn.style.display = "none"; 
-                      lastRow.querySelector('.btn-remove-loot').style.display = "none";
+                      addLootBtn.style.display = "none"; lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
               } else if (type === "routine") {
                   if (addLootBtn) addLootBtn.style.display = "none";
               }
-              
               document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (僅限更新此筆資料)"; 
               saveBtnMaster.innerText = "💾 更新紀錄"; 
-              saveBtnMaster.classList.replace("btn-primary", "btn-warning");
-              cancelEditMasterBtn.classList.remove("d-none");
+              saveBtnMaster.classList.replace("btn-primary", "btn-warning"); cancelEditMasterBtn.classList.remove("d-none");
               window.scrollTo({ top: 0, behavior: 'smooth' });
           });
       }
