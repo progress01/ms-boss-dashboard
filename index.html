@@ -596,7 +596,6 @@
           selectedArr.forEach(boss => {
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
               if (!existingCard) {
-                  // ⭐ 優化 2：隊伍記憶功能 (帶入上一次打此王的隊伍資料)
                   let lastPartySize = 1;
                   let lastTeammates = "";
                   const lastRecord = currentRecordsData.find(r => r.character_name === activeChar && r.boss_name === boss);
@@ -1018,14 +1017,21 @@
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
           const limitDateStr = getLocalDateString(oneYearAgo);
 
-          const q = query(collection(db, "DropRecords"), 
-                          where("uid", "==", currentUserUid),
-                          where("date", ">=", limitDateStr));
+          // 🛠️ 【修正處】移除會觸發複合索引報錯的 where("date", ">=", limitDateStr) 條件
+          const q = query(collection(db, "DropRecords"), where("uid", "==", currentUserUid));
           
           const querySnapshot = await getDocs(q);
           
           let records = []; const boundaries = getWeekBoundaries();
-          querySnapshot.forEach((doc) => { let data = doc.data(); data.id = doc.id; records.push(data); });
+          querySnapshot.forEach((doc) => { 
+              let data = doc.data(); 
+              data.id = doc.id; 
+              
+              // 🛠️ 【修正處】將日期過濾轉移到前端執行，完美避開 Firestore 的複合索引限制
+              if (data.date >= limitDateStr) {
+                  records.push(data); 
+              }
+          });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
           
@@ -1037,7 +1043,8 @@
 
       } catch (error) { 
           console.error("載入紀錄失敗:", error); 
-          alert("無法連線至資料庫，請重整頁面！");
+          // 🛠️ 【修正處】提供真實的錯誤訊息，方便未來除錯
+          alert("無法連線至資料庫或發生錯誤：\n" + error.message + "\n\n請打開瀏覽器開發者工具(F12)查看詳細錯誤。");
       }
   }
 
@@ -1182,14 +1189,13 @@
               const teammatesStr = document.querySelector(`.boss-teammates[data-boss="${boss}"]`).value.trim();
               const teamArray = teammatesStr ? teammatesStr.split(/[\s,，、]+/).filter(Boolean) : [];
               
-              // ⭐ 優化 1：關聯更新 (追蹤原始日期，找出這場打王所有的關聯紀錄)
               const originalEditedDoc = currentRecordsData.find(d => d.id === editId);
               const originalDate = originalEditedDoc ? originalEditedDoc.date : recordDate;
               const runRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.boss_name === boss && d.date === originalDate);
               
               runRecords.forEach(runDoc => {
                   let updateData = { 
-                      date: recordDate, // 同步更新為新的日期
+                      date: recordDate,
                       total_players: partySize, 
                       teammates: teamArray 
                   };
@@ -1201,7 +1207,6 @@
                       let status = runDoc.status;
                       let payout = runDoc.payout_status;
 
-                      // 若這筆資料剛好是目前手動編輯的那筆寶物，套用新的 UI 值
                       if (runDoc.id === editId && editType === "loot") {
                           const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row[data-doc-id="${editId}"]`);
                           if (row) {
@@ -1220,7 +1225,6 @@
                   promises.push(updateDoc(doc(db, "DropRecords", runDoc.id), updateData));
               });
 
-              // ⭐ 優化 3：編輯模式下，處理「新增加」的寶物列 (這些列不會有 data-doc-id)
               const newLootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row:not([data-doc-id])`);
               newLootRows.forEach(row => {
                   const itemName = row.querySelector('.loot-name').value.trim();
@@ -1316,14 +1320,12 @@
   cancelEditMasterBtn.addEventListener("click", resetMasterForm);
   
   function resetMasterForm() {
-      // ⭐ 優化 4：重置表單時，保留使用者最後選擇的日期 (不再無腦切回今天)
       const currentSelectedDate = document.getElementById("input-date-master").value;
       
       document.getElementById("form-master").reset();
       document.getElementById("edit-doc-id-master").value = "";
       document.getElementById("edit-type-master").value = "";
       
-      // 復原日期
       document.getElementById("input-date-master").value = currentSelectedDate || getLocalDateString(getTWNow());
       
       bossSelectMaster.clear();
@@ -1392,14 +1394,12 @@
                       const lootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${d.boss_name}"] .row`);
                       const lastRow = lootRows[lootRows.length - 1];
                       
-                      // 替已經存在的寶物行打上標記，方便存檔時辨識「這是要 Update 的，其他沒標記的是要 addDoc 新增的」
                       lastRow.setAttribute('data-doc-id', d.id); 
                       
                       lastRow.querySelector('.loot-name').value = d.item_name;
                       lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
                       lastRow.querySelector('.loot-status').value = d.status || "待售出";
                       
-                      // 隱藏刪除鈕，避免誤刪要編輯的主體
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
               }
