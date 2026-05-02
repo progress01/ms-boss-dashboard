@@ -89,6 +89,18 @@
         /* 導覽 Modal 樣式微調 */
         .tutorial-step-title { color: #2980b9; font-weight: bold; border-bottom: 2px solid #ecf0f1; padding-bottom: 4px; margin-bottom: 8px; margin-top: 16px;}
         .tutorial-highlight { background-color: #fff3cd; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #d35400;}
+
+        /* 歐氣排行榜專用樣式 */
+        .luck-card { border-radius: 10px; border-left: 6px solid #ccc; margin-bottom: 12px; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05);}
+        .luck-card.tier-s { border-left-color: #f1c40f; background-color: #fffdf0; }
+        .luck-card.tier-a { border-left-color: #e67e22; background-color: #fdfaf6; }
+        .luck-card.tier-b { border-left-color: #3498db; }
+        .luck-card.tier-f { border-left-color: #7f8c8d; background-color: #f4f6f7; filter: grayscale(50%); }
+        .luck-title { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; display: inline-block;}
+        .title-s { background: #f1c40f; color: #fff; text-shadow: 0px 1px 2px rgba(0,0,0,0.2); }
+        .title-a { background: #e67e22; color: #fff; }
+        .title-b { background: #3498db; color: #fff; }
+        .title-f { background: #7f8c8d; color: #fff; }
     </style>
 </head>
 <body>
@@ -109,6 +121,25 @@
                 <h5 class="fw-bold mb-3 text-dark" id="dc-title">確認操作</h5>
                 <p class="text-muted mb-4" id="dc-message" style="font-size: 0.95em;"></p>
                 <div class="d-flex flex-column gap-2" id="dc-buttons"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="luckModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background-color: #f8f9fa;">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">📊 隊友歐氣值分析 (大數據玄學)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <p class="text-muted small text-center mb-3">公式：歐氣指數 = 帶動寶物總市值 ÷ 出勤場次</p>
+                <div id="luck-board-container">
+                    </div>
+            </div>
+            <div class="modal-footer bg-light p-2 justify-content-center">
+                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製隊友名單</button>
             </div>
         </div>
     </div>
@@ -208,6 +239,8 @@
 
             <div class="mt-auto d-flex flex-column border-top border-secondary">
                 <a data-bs-toggle="modal" data-bs-target="#tutorialModal" class="sidebar-action text-info bg-dark bg-opacity-25 border-bottom border-secondary">💡 系統快速導覽</a>
+                <a data-bs-toggle="modal" data-bs-target="#luckModal" class="sidebar-action text-success bg-dark bg-opacity-25 border-bottom border-secondary">📊 隊友歐氣值分析</a>
+                
                 <a id="btn-add-char" class="sidebar-action text-warning">➕ 新增角色</a>
                 <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-primary">⚙️ 設定自訂物品</a>
                 <a id="btn-logout" class="sidebar-action text-danger">🚪 登出 (<span id="user-name"></span>)</a>
@@ -1376,6 +1409,106 @@
   document.getElementById("overview-quick-range").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
+
+  // 💡 新增：計算與渲染歐氣值排行榜的邏輯
+  function renderLuckBoard() {
+      const container = document.getElementById("luck-board-container");
+      container.innerHTML = "<div class='text-center text-muted'>正在透過大數據玄學計算中...</div>";
+
+      let stats = {}; 
+      let processedRuns = new Set(); 
+
+      currentRecordsData.forEach(record => {
+          // 只算有隊友的場次
+          if (!record.teammates || record.teammates.length === 0) return;
+
+          let runKey = record.batch_id || `${record.date}_${record.boss_name}`;
+          let hasDrop = record.item_name && record.item_name !== "無";
+          let dropValue = hasDrop ? (parseFloat(record.item_total_price_billion) || 0) : 0;
+
+          record.teammates.forEach(name => {
+              if (!stats[name]) { stats[name] = { name: name, runs: 0, totalValue: 0, blankRuns: 0 }; }
+
+              let teamRunKey = `${name}_${runKey}`;
+              if (!processedRuns.has(teamRunKey)) {
+                  stats[name].runs += 1;
+                  if (!hasDrop) { stats[name].blankRuns += 1; }
+                  processedRuns.add(teamRunKey);
+              } else if (hasDrop) {
+                  stats[name].blankRuns -= 1; 
+              }
+
+              stats[name].totalValue += dropValue;
+          });
+      });
+
+      let leaderboard = Object.values(stats).map(player => {
+          return {
+              name: player.name,
+              runs: player.runs,
+              totalValue: player.totalValue,
+              luckIndex: player.runs > 0 ? (player.totalValue / player.runs) : 0,
+              blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
+          };
+      });
+
+      // 依照歐氣指數降序排列
+      leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
+
+      if(leaderboard.length === 0) {
+          container.innerHTML = "<div class='text-center text-muted py-4'>目前還沒有跟隊友出團的紀錄哦！<br>快找大腿一起打王吧！</div>";
+          return;
+      }
+
+      let html = "";
+      leaderboard.forEach((p, index) => {
+          // 動態判定稱號與卡片階級
+          let tierClass = "tier-b";
+          let titleClass = "title-b";
+          let titleText = "✨ 穩定發揮中";
+
+          if (p.luckIndex > 1.5) {
+              tierClass = "tier-s"; titleClass = "title-s"; titleText = "👑 行走的掉寶霸主";
+          } else if (p.luckIndex > 0.5) {
+              tierClass = "tier-a"; titleClass = "title-a"; titleText = "🌟 歐洲血統";
+          } else if (p.luckIndex <= 0.1 && p.blankRate >= 70) {
+              tierClass = "tier-f"; titleClass = "title-f"; titleText = "🌚 絕望的避雷針";
+          } else if (p.runs >= 5 && p.luckIndex == 0) {
+              tierClass = "tier-f"; titleClass = "title-f"; titleText = "💀 純淨無瑕(沒掉過寶)";
+          }
+
+          let rankTrophy = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `<span class="text-muted ms-1 me-2">${index+1}.</span>`));
+
+          html += `
+              <div class="p-3 luck-card ${tierClass}">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${p.name}</h5>
+                      <span class="luck-title ${titleClass}">${titleText}</span>
+                  </div>
+                  <div class="row text-center mt-3">
+                      <div class="col-4">
+                          <div class="small text-muted mb-1">歐氣指數</div>
+                          <div class="fw-bold text-danger fs-5">${p.luckIndex.toFixed(2)}</div>
+                      </div>
+                      <div class="col-4 border-start border-end">
+                          <div class="small text-muted mb-1">帶動產值</div>
+                          <div class="fw-bold text-success fs-5">${p.totalValue.toFixed(1)} <small>億</small></div>
+                      </div>
+                      <div class="col-4">
+                          <div class="small text-muted mb-1">打白工率</div>
+                          <div class="fw-bold text-secondary fs-5">${p.blankRate}<small>%</small></div>
+                      </div>
+                  </div>
+                  <div class="small text-muted text-end mt-2 border-top pt-1" style="font-size: 0.7em;">共同出勤次數: ${p.runs} 場</div>
+              </div>
+          `;
+      });
+
+      container.innerHTML = html;
+  }
+
+  // 綁定 Modal 打開時觸發計算
+  document.getElementById('luckModal').addEventListener('show.bs.modal', renderLuckBoard);
 
   async function loadRecords() {
       if(!currentUserUid) return;
