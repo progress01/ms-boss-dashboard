@@ -134,12 +134,34 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3">
-                <p class="text-muted small text-center mb-3">公式：歐氣指數 = 帶動寶物總市值 ÷ 出勤場次</p>
+                
+                <div class="alert alert-success py-2 px-3 mb-2 d-flex justify-content-between align-items-center" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size: 1.2rem;">⏱️</span>
+                        <div>
+                            <strong class="d-block small">分析區間：已與右上角同步</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success fw-bold py-0" type="button" data-bs-toggle="collapse" data-bs-target="#luckFormulaInfo" style="font-size: 0.8rem;">
+                        ℹ️ 算法說明
+                    </button>
+                </div>
+                
+                <div class="collapse mb-3" id="luckFormulaInfo">
+                    <div class="card card-body bg-white border-success shadow-sm" style="font-size: 0.85rem;">
+                        <strong class="text-success mb-2 border-bottom pb-1">📊 進階數據量化指標說明：</strong>
+                        <ul class="mb-0 ps-3 text-secondary" style="line-height: 1.6;">
+                            <li><strong>歐氣指數：</strong> <code>帶動產值 ÷ 共同出勤場次</code><br>代表該隊友在陣中時，平均每場能創造多少億的收益，是評估隊友「真實幸運值」的核心進階數據。</li>
+                            <li><strong>帶動產值：</strong> 該隊友參與的所有場次中，掉落寶物的市價總和。</li>
+                            <li><strong>打白工率：</strong> <code>無掉寶場次 ÷ 共同出勤場次</code><br>高白工率代表該隊友目前深陷低潮，正處於極端離群值，敬請耐心等待大樣本數下的均值回歸。</li>
+                        </ul>
+                    </div>
+                </div>
                 <div id="luck-board-container">
                     </div>
             </div>
             <div class="modal-footer bg-light p-2 justify-content-center">
-                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製隊友名單</button>
+                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製隊友名單</button>
             </div>
         </div>
     </div>
@@ -1355,39 +1377,53 @@
       });
   }
 
+  // 💡 獨立出日期計算邏輯，讓不同功能共用
+  function getDashboardDateRange() {
+      const rangeType = document.getElementById("overview-quick-range").value;
+      const startDateInput = document.getElementById("overview-start-date").value;
+      const endDateInput = document.getElementById("overview-end-date").value;
+      let start, end;
+      const boundaries = getWeekBoundaries();
+      const now = getTWNow();
+
+      if (rangeType === "custom") {
+          if (!startDateInput || !endDateInput) return null; 
+          start = new Date(startDateInput + "T00:00:00"); 
+          end = new Date(endDateInput + "T23:59:59");
+      } else if (rangeType === "this_week") {
+          start = boundaries.thisWeekStart; end = new Date(now); end.setHours(23, 59, 59, 999);
+      } else if (rangeType === "last_week") {
+          start = boundaries.lastWeekStart; end = new Date(boundaries.thisWeekStart); end.setTime(end.getTime() - 1);
+      } else if (rangeType === "this_month") {
+          start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      } else if (rangeType === "all") {
+          start = new Date(0); end = new Date("2100-01-01");
+      }
+      return { start, end };
+  }
+
   function updateAccountOverview() {
       const rangeType = document.getElementById("overview-quick-range").value;
       const startDateInput = document.getElementById("overview-start-date");
       const endDateInput = document.getElementById("overview-end-date");
       const separator = document.getElementById("overview-date-separator");
 
-      let start, end;
-      const boundaries = getWeekBoundaries();
-      const now = getTWNow();
-
       if (rangeType === "custom") {
           startDateInput.classList.remove("d-none"); endDateInput.classList.remove("d-none"); separator.classList.remove("d-none");
-          if (!startDateInput.value || !endDateInput.value) return; 
-          start = new Date(startDateInput.value + "T00:00:00"); end = new Date(endDateInput.value + "T23:59:59");
       } else {
           startDateInput.classList.add("d-none"); endDateInput.classList.add("d-none"); separator.classList.add("d-none");
-          if (rangeType === "this_week") {
-              start = boundaries.thisWeekStart; end = new Date(now); end.setHours(23, 59, 59, 999);
-          } else if (rangeType === "last_week") {
-              start = boundaries.lastWeekStart; end = new Date(boundaries.thisWeekStart); end.setTime(end.getTime() - 1);
-          } else if (rangeType === "this_month") {
-              start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-          } else if (rangeType === "all") {
-              start = new Date(0); end = new Date("2100-01-01");
-          }
       }
+
+      const range = getDashboardDateRange();
+      if(!range) return;
 
       let accountCrystal = 0; let accountDividend = 0; let charWeeklyCount = 0;
       const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"]; 
+      const boundaries = getWeekBoundaries();
 
       currentRecordsData.forEach(data => {
           const rd = new Date(data.date + "T00:00:00");
-          if (rd >= start && rd <= end) {
+          if (rd >= range.start && rd <= range.end) {
               accountCrystal += data.crystal_income_billion || 0;
               if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.status !== "自用" && data.my_dividend_billion > 0) {
                   accountDividend += data.my_dividend_billion;
@@ -1410,15 +1446,25 @@
   document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
 
-  // 💡 新增：計算與渲染歐氣值排行榜的邏輯
+  // 💡 修改：計算與渲染歐氣值排行榜 (連動右上角時間)
   function renderLuckBoard() {
       const container = document.getElementById("luck-board-container");
       container.innerHTML = "<div class='text-center text-muted'>正在透過大數據玄學計算中...</div>";
+
+      const range = getDashboardDateRange();
+      if(!range) {
+          container.innerHTML = "<div class='text-center text-muted py-4'>請先於畫面右上角選擇有效的日期區間！</div>";
+          return;
+      }
 
       let stats = {}; 
       let processedRuns = new Set(); 
 
       currentRecordsData.forEach(record => {
+          const rd = new Date(record.date + "T00:00:00");
+          // ⚠️ 核心過濾機制：依據右上角選擇的區間
+          if (rd < range.start || rd > range.end) return;
+
           // 只算有隊友的場次
           if (!record.teammates || record.teammates.length === 0) return;
 
@@ -1456,13 +1502,12 @@
       leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
       if(leaderboard.length === 0) {
-          container.innerHTML = "<div class='text-center text-muted py-4'>目前還沒有跟隊友出團的紀錄哦！<br>快找大腿一起打王吧！</div>";
+          container.innerHTML = "<div class='text-center text-muted py-4'>此區間內目前沒有跟隊友出團的紀錄哦！</div>";
           return;
       }
 
       let html = "";
       leaderboard.forEach((p, index) => {
-          // 動態判定稱號與卡片階級
           let tierClass = "tier-b";
           let titleClass = "title-b";
           let titleText = "✨ 穩定發揮中";
