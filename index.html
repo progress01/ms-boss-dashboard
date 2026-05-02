@@ -101,6 +101,8 @@
         .title-a { background: #e67e22; color: #fff; }
         .title-b { background: #3498db; color: #fff; }
         .title-f { background: #7f8c8d; color: #fff; }
+        
+        .currency-twd { color: #e67e22; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -151,10 +153,17 @@
                     <div class="card card-body bg-white border-success shadow-sm" style="font-size: 0.85rem;">
                         <strong class="text-success mb-2 border-bottom pb-1">📊 進階數據量化指標說明：</strong>
                         <ul class="mb-0 ps-3 text-secondary" style="line-height: 1.6;">
-                            <li><strong>歐氣指數：</strong> <code>帶動產值 ÷ 出勤場次</code><br>代表該玩家在陣中時，平均每場能創造多少億的收益，是評估「真實幸運值」的核心進階數據。</li>
-                            <li><strong>帶動產值：</strong> 該玩家參與的所有場次中，掉落寶物的市價總和。</li>
-                            <li><strong>打白工率：</strong> <code>無掉寶場次 ÷ 出勤場次</code><br>高白工率代表該玩家目前深陷低潮，正處於極端離群值，敬請耐心等待大樣本數下的均值回歸。</li>
+                            <li><strong>歐氣指數：</strong> <code>帶動產值 ÷ 出勤場次</code><br>代表該玩家在陣中時，平均每場能創造多少億的楓幣收益 (台幣交易暫不計入此指數)。</li>
+                            <li><strong>目前連摃：</strong> 該玩家從最近一次出團往回推，連續沒掉寶的場次。連摃越多越有機會觸底反彈。</li>
+                            <li><strong>打白工率：</strong> <code>無掉寶場次 ÷ 出勤場次</code><br>高白工率代表正處於極端離群值，敬請耐心等待大樣本數下的均值回歸。</li>
                         </ul>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mb-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="luck-merge-chars" checked>
+                        <label class="form-check-label small fw-bold text-secondary" for="luck-merge-chars">帳號歸戶 (所有分身合併為"本人")</label>
                     </div>
                 </div>
 
@@ -186,25 +195,20 @@
 
                 <h6 class="tutorial-step-title">2️⃣ 第二步：日常打王結算 (超快速)</h6>
                 <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
-                    <li><strong>自動預載：</strong> 系統會<strong class="text-danger">自動載入這週尚未打完的王</strong>。</li>
-                    <li><strong>分批紀錄：</strong> 若這次只打部分，請先點擊搜尋框中沒打的王標籤旁的 <span class="text-danger fw-bold">「✖」</span> 將其移除，剩餘的王會留在下一次自動載入。</li>
-                    <li><strong>固定班底：</strong> 填好人數後點擊 <span class="tutorial-highlight">📌 記憶為預設班底</span>，下週自動帶入！</li>
-                    <li><strong>儲存結算：</strong> 點擊最下方的「💾 批次儲存結算」一次完成紀錄！</li>
+                    <li><strong>自動預載：</strong> 系統會自動載入這週尚未打完的王。</li>
+                    <li><strong>雙幣結算：</strong> 填寫掉落物時，可切換該物品是賣「億(楓幣)」還是「元(台幣)」，系統會自動分開記帳！</li>
+                    <li><strong>分批紀錄：</strong> 若這次只打部分，請點搜尋框標籤旁的 <span class="text-danger fw-bold">「✖」</span> 移除，剩餘的王會留到下次載入。</li>
+                    <li><strong>儲存結算：</strong> 點擊「💾 批次儲存結算」一次完成紀錄！</li>
                 </ul>
 
                 <h6 class="tutorial-step-title">3️⃣ 第三步：帳務與分錢管理</h6>
                 <p class="mb-1 text-secondary" style="font-size: 0.9em;">右側版面分為兩個獨立頁籤：</p>
                 <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
                     <li><strong>📜 結晶明細：</strong> 對帳這週哪隻王還沒清。</li>
-                    <li><strong>📦 寶物庫：</strong> 拍賣場東西賣掉後，來這裡點擊「✅ 結清」。</li>
-                    <li><strong>複製對帳：</strong> 點擊 <span class="tutorial-highlight">📋 複製對帳單</span>，自動產出含分錢名單的文字，貼 Line 超方便。</li>
+                    <li><strong>📦 寶物庫：</strong> 拍賣/群組東西賣掉後，來這裡點擊「✅ 結清」。</li>
+                    <li><strong>複製對帳：</strong> 點擊 <span class="tutorial-highlight">📋 複製對帳單</span>，自動產出含分錢名單與台幣/楓幣的文字。</li>
                 </ul>
 
-                <h6 class="tutorial-step-title">4️⃣ 第四步：修改與防呆機制</h6>
-                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
-                    <li><strong>編輯：</strong> 點擊紀錄「編輯」，會自動帶回左側表單修改。</li>
-                    <li><strong>連動刪除：</strong> 點擊刪除時，系統會貼心詢問你<strong>「是否要連同該場次的其他掉寶與結晶一併刪除」</strong>，不用一筆一筆慢慢點！</li>
-                </ul>
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">我知道了！開始結算 🚀</button>
@@ -299,12 +303,15 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-2 mb-md-0">
-                    <div class="text-muted" style="font-size:0.85rem;">區間內全帳號總結晶</div>
+                    <div class="text-muted" style="font-size:0.85rem;">區間內總結晶收益</div>
                     <h4 class="crystal-text mb-0" id="account-total-crystal">0 億</h4>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-muted" style="font-size:0.85rem;">區間內全帳號已結清分紅</div>
-                    <h4 class="text-success mb-0 fw-bold" id="account-total-settled">0 億</h4>
+                    <div class="text-muted" style="font-size:0.85rem;">區間內已結清分紅 (楓幣/台幣)</div>
+                    <h4 class="mb-0 fw-bold">
+                        <span class="text-success" id="account-total-settled">0 億</span>
+                        <small class="text-secondary fs-6"> / <span class="currency-twd" id="account-total-settled-twd">0 元</span></small>
+                    </h4>
                 </div>
             </div>
         </div>
@@ -334,7 +341,7 @@
             <div class="col-6 col-md-3 stat-card-wrapper">
                 <div class="card card-custom p-3 bg-white border-start border-success border-4">
                     <h6 class="text-muted">✨ 已結清分紅</h6>
-                    <h3 class="dividend-text" id="stat-drop">0 億</h3>
+                    <h3 class="dividend-text"><span id="stat-drop">0 億</span><br><small class="currency-twd fs-6"><span id="stat-drop-twd">0</span> 元</small></h3>
                 </div>
             </div>
             <div class="col-6 col-md-3 stat-card-wrapper">
@@ -620,13 +627,12 @@
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-  // 💡 啟用所有 Bootstrap Tooltips (工具提示框)
+  // 💡 啟用所有 Bootstrap Tooltips
   const initTooltips = () => {
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
       [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
   };
   
-  // 初始化
   document.addEventListener("DOMContentLoaded", initTooltips);
 
   const firebaseConfig = {
@@ -644,14 +650,11 @@
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   
-  // 💡 全局 UI 輔助函數 (Toast & Dynamic Modal)
   window.showToast = function(message, type = "success") {
       const toastEl = document.getElementById('liveToast');
       const toastBody = document.getElementById('toast-body');
-      
       toastBody.innerHTML = message;
       toastEl.className = `toast align-items-center border-0 text-bg-${type}`;
-      
       const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
       toast.show();
   };
@@ -659,10 +662,8 @@
   window.showConfirm = function(title, message, buttons) {
       document.getElementById('dc-title').innerText = title;
       document.getElementById('dc-message').innerHTML = message;
-      
       const btnContainer = document.getElementById('dc-buttons');
       btnContainer.innerHTML = '';
-
       buttons.forEach(btn => {
           const buttonEl = document.createElement('button');
           buttonEl.className = `btn fw-bold ${btn.class}`;
@@ -676,7 +677,6 @@
           }
           btnContainer.appendChild(buttonEl);
       });
-
       bootstrap.Modal.getOrCreateInstance(document.getElementById('dynamicConfirmModal')).show();
   };
 
@@ -695,11 +695,9 @@
   
   let currentUserUid = null; 
   let bossSelectMaster; 
-  
   let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
   let activeChar = ""; 
   let currentRecordsData = [];
-  
   let isManageMode = { routine: false, loot: false };
 
   const loginScreen = document.getElementById("login-screen");
@@ -717,7 +715,7 @@
       { group: "漆黑BOSS套裝", value: "口紅控制器標誌", text: "口紅控制器標誌" }, { group: "漆黑BOSS套裝", value: "附有魔力的眼罩", text: "附有魔力的眼罩" }, { group: "漆黑BOSS套裝", value: "全面控制核心", text: "全面控制核心" }, { group: "漆黑BOSS套裝", value: "巨大的恐怖", text: "巨大的恐怖" }, { group: "漆黑BOSS套裝", value: "苦痛的根源", text: "苦痛的根源" }, { group: "漆黑BOSS套裝", value: "創世的胸章", text: "創世的胸章" }, { group: "漆黑BOSS套裝", value: "夢幻的腰帶", text: "夢幻的腰帶" }, { group: "漆黑BOSS套裝", value: "米特拉的憤怒選擇箱", text: "米特拉的憤怒選擇箱" }, { group: "漆黑BOSS套裝", value: "指揮官力量耳環", text: "指揮官力量耳環" }, { group: "漆黑BOSS套裝", value: "受詛咒的魔導書選擇箱", text: "受詛咒的魔導書選擇箱" },
       { group: "黎明的BOSS套組", value: "守護者天使戒指", text: "守護者天使戒指" }, { group: "黎明的BOSS套組", value: "破曉墜飾", text: "破曉墜飾" }, { group: "黎明的BOSS套組", value: "暮光印記", text: "暮光印記" }, { group: "黎明的BOSS套組", value: "星耀耳環", text: "星耀耳環" },
       { group: "光輝BOSS套裝", value: "根源的耳語", text: "根源的耳語" }, { group: "光輝BOSS套裝", value: "死亡之誓", text: "死亡之誓" }, 
-      { group: "其他", value: "永續戒指Lv.4", text: "永續戒指Lv.4" }, { group: "其他", value: "規範戒指Lv.4", text: "規範戒指Lv.4" },{ group: "其他", value: "武器泡泡Lv.4", text: "武器泡泡Lv.4" },{ group: "其他", value: "月之淚", text: "月之淚" },{ group: "其他", value: "瑪麗西亞靈魂寶珠", text: "瑪麗西亞靈魂寶珠" },{ group: "其他", value: "月之淚", text: "月之淚" },{ group: "其他", value: "卓越鐵鎚(腰帶)", text: "卓越鐵鎚(腰帶)" },{ group: "其他", value: "卓越鐵鎚(臉部裝飾)", text: "卓越鐵鎚(臉部裝飾)" },{ group: "其他", value: "卓越鐵鎚(眼飾)", text: "卓越鐵鎚(眼飾)" },{ group: "其他", value: "卓越鐵鎚(勳章)", text: "卓越鐵鎚(勳章)" },{ group: "其他", value: "卓越鐵鎚(耳環)", text: "卓越鐵鎚(耳環)" },{ group: "其他", value: "信念的研磨石", text: "信念的研磨石" }, { group: "其他", value: "生命的研磨石", text: "生命的研磨石" }
+      { group: "其他", value: "永續戒指Lv.4", text: "永續戒指Lv.4" }, { group: "其他", value: "規範戒指Lv.4", text: "規範戒指Lv.4" },{ group: "其他", value: "武器泡泡Lv.4", text: "武器泡泡Lv.4" },{ group: "其他", value: "月之淚", text: "月之淚" },{ group: "其他", value: "瑪麗西亞靈魂寶珠", text: "瑪麗西亞靈魂寶珠" },{ group: "其他", value: "卓越鐵鎚(腰帶)", text: "卓越鐵鎚(腰帶)" },{ group: "其他", value: "卓越鐵鎚(臉部裝飾)", text: "卓越鐵鎚(臉部裝飾)" },{ group: "其他", value: "卓越鐵鎚(眼飾)", text: "卓越鐵鎚(眼飾)" },{ group: "其他", value: "卓越鐵鎚(勳章)", text: "卓越鐵鎚(勳章)" },{ group: "其他", value: "卓越鐵鎚(耳環)", text: "卓越鐵鎚(耳環)" },{ group: "其他", value: "信念的研磨石", text: "信念的研磨石" }, { group: "其他", value: "生命的研磨石", text: "生命的研磨石" }
   ];
 
   function showScreen(screen) {
@@ -739,7 +737,6 @@
               if(!userSettings.routineBosses) userSettings.routineBosses = {};
               if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
               if(!userSettings.bossTemplates) userSettings.bossTemplates = {}; 
-              
               if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
                   activeChar = userSettings.lastActiveChar;
               } else {
@@ -761,11 +758,9 @@
       renderItemDatalist(); 
       renderCustomItemList();
       renderSidebar();
-      
       const today = getTWNow();
       document.getElementById("overview-start-date").value = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1));
       document.getElementById("overview-end-date").value = getLocalDateString(today);
-
       loadRecords();
   }
 
@@ -812,9 +807,7 @@
       datalist.innerHTML = "";
       const allItems = [...userSettings.customItems, ...defaultItemOptions.map(i => i.value)];
       const uniqueItems = [...new Set(allItems)];
-      uniqueItems.forEach(item => {
-          datalist.innerHTML += `<option value="${item}">`;
-      });
+      uniqueItems.forEach(item => { datalist.innerHTML += `<option value="${item}">`; });
   }
 
   const tsRenderConfig = {
@@ -839,17 +832,14 @@
       bossSelectMaster.on('change', function(selected) {
           const container = document.getElementById('dynamic-boss-configs');
           const globalControls = document.getElementById('global-accordion-controls');
-
           const selectedArr = Array.isArray(selected) ? selected : (selected ? [selected] : []);
 
           if (selectedArr.length === 0) {
               container.innerHTML = '';
-              globalControls.classList.add('d-none');
-              globalControls.classList.remove('d-flex');
+              globalControls.classList.add('d-none'); globalControls.classList.remove('d-flex');
               return;
           } else {
-              globalControls.classList.remove('d-none');
-              globalControls.classList.add('d-flex');
+              globalControls.classList.remove('d-none'); globalControls.classList.add('d-flex');
           }
 
           const existingCards = container.querySelectorAll('.boss-card-wrapper');
@@ -861,33 +851,23 @@
           selectedArr.forEach(boss => {
               const existingCard = container.querySelector(`.boss-card-wrapper[data-boss="${boss}"]`);
               if (!existingCard) {
-                  let lastPartySize = 1;
-                  let lastTeammates = "";
-                  
-                  let hasTemplate = false;
+                  let lastPartySize = 1; let lastTeammates = ""; let hasTemplate = false;
                   if (userSettings.bossTemplates && userSettings.bossTemplates[activeChar] && userSettings.bossTemplates[activeChar][boss]) {
                       const template = userSettings.bossTemplates[activeChar][boss];
-                      lastPartySize = template.size || 1;
-                      lastTeammates = template.teammates || "";
-                      hasTemplate = true;
-                  } 
-                  else {
+                      lastPartySize = template.size || 1; lastTeammates = template.teammates || ""; hasTemplate = true;
+                  } else {
                       const lastRecord = currentRecordsData.find(r => r.character_name === activeChar && r.boss_name === boss);
-                      if (lastRecord) {
-                          lastPartySize = lastRecord.total_players || 1;
-                          lastTeammates = (lastRecord.teammates || []).join(" ");
-                      }
+                      if (lastRecord) { lastPartySize = lastRecord.total_players || 1; lastTeammates = (lastRecord.teammates || []).join(" "); }
                   }
 
                   const card = document.createElement('div');
                   card.className = 'card mb-2 border border-secondary shadow-sm boss-card-wrapper';
                   card.setAttribute('data-boss', boss);
                   
+                  // 💡 UI 修改：加入幣值選單
                   card.innerHTML = `
                       <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center boss-card-header">
-                          <span class="fw-bold mb-0">
-                              <span class="accordion-icon me-1">▶</span> 👑 ${boss}
-                          </span>
+                          <span class="fw-bold mb-0"><span class="accordion-icon me-1">▶</span> 👑 ${boss}</span>
                           <span class="badge bg-secondary ms-2 opacity-75" style="font-size: 0.7em;">點擊展開/收合</span>
                       </div>
                       <div class="card-body p-2 bg-light boss-card-body d-none">
@@ -903,30 +883,22 @@
                               </select>
                           </div>
                           <input type="text" class="form-control form-control-sm mb-1 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)" value="${lastTeammates}">
-                          
                           <div class="text-end mb-2">
                               <button type="button" class="btn btn-sm py-0 px-2 btn-save-template ${hasTemplate ? 'btn-success text-white' : 'btn-outline-info'}" data-boss="${boss}" style="font-size: 0.75em; border-radius: 4px;">
                                   ${hasTemplate ? '⭐ 已設為預設班底' : '📌 記憶為預設班底'}
                               </button>
                           </div>
-
                           <div class="boss-loot-container" data-boss="${boss}"></div>
-                          <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
-                              ➕ 新增掉落物品
-                          </button>
+                          <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">➕ 新增掉落物品</button>
                       </div>
                   `;
                   
                   const header = card.querySelector('.boss-card-header');
                   const body = card.querySelector('.boss-card-body');
                   const icon = card.querySelector('.accordion-icon');
-                  
                   header.addEventListener('click', () => {
-                      if (body.classList.contains('d-none')) {
-                          body.classList.remove('d-none'); icon.innerText = '▼';
-                      } else {
-                          body.classList.add('d-none'); icon.innerText = '▶';
-                      }
+                      if (body.classList.contains('d-none')) { body.classList.remove('d-none'); icon.innerText = '▼'; } 
+                      else { body.classList.add('d-none'); icon.innerText = '▶'; }
                   });
                   container.appendChild(card);
               }
@@ -949,25 +921,18 @@
   });
 
   document.getElementById('dynamic-boss-configs').addEventListener('click', function(e) {
-      
       if (e.target.classList.contains('btn-save-template')) {
-          const btn = e.target;
-          const bossName = btn.getAttribute('data-boss');
+          const btn = e.target; const bossName = btn.getAttribute('data-boss');
           const size = parseInt(document.querySelector(`.boss-party-size[data-boss="${bossName}"]`).value) || 1;
           const teammates = document.querySelector(`.boss-teammates[data-boss="${bossName}"]`).value.trim();
 
           if(!userSettings.bossTemplates) userSettings.bossTemplates = {};
           if(!userSettings.bossTemplates[activeChar]) userSettings.bossTemplates[activeChar] = {};
-
           userSettings.bossTemplates[activeChar][bossName] = { size, teammates };
           
           saveUserSettings().then(() => {
-              btn.innerText = "✅ 儲存成功！";
-              btn.classList.remove("btn-outline-info");
-              btn.classList.add("btn-success", "text-white");
-              setTimeout(() => {
-                  btn.innerText = "⭐ 已設為預設班底";
-              }, 1500);
+              btn.innerText = "✅ 儲存成功！"; btn.classList.remove("btn-outline-info"); btn.classList.add("btn-success", "text-white");
+              setTimeout(() => { btn.innerText = "⭐ 已設為預設班底"; }, 1500);
           }).catch(err => showToast("儲存失敗", "danger"));
           return;
       }
@@ -975,15 +940,19 @@
       if (e.target.classList.contains('btn-add-loot')) {
           const bossName = e.target.getAttribute('data-boss');
           const lootContainer = document.querySelector(`.boss-loot-container[data-boss="${bossName}"]`);
-          
           const row = document.createElement('div');
           row.className = 'row g-1 align-items-center mb-2 border-start border-warning border-3 ps-2';
+          // 💡 UI 修改：加入幣值選單
           row.innerHTML = `
-              <div class="col-5">
+              <div class="col-4">
                   <input type="text" list="item-datalist" class="form-control form-control-sm loot-name" placeholder="物品名稱">
               </div>
-              <div class="col-3">
-                  <input type="number" class="form-control form-control-sm loot-price" placeholder="市價(億)" step="0.1">
+              <div class="col-4 d-flex pe-0">
+                  <input type="number" class="form-control form-control-sm loot-price" placeholder="價格" step="0.1" style="border-top-right-radius:0; border-bottom-right-radius:0;">
+                  <select class="form-select form-select-sm loot-currency px-1 text-center fw-bold" style="border-top-left-radius:0; border-bottom-left-radius:0; width: 55px; background-position: right 0.2rem center;">
+                      <option value="meso">億</option>
+                      <option value="twd" class="text-warning">元</option>
+                  </select>
               </div>
               <div class="col-3">
                   <select class="form-select form-select-sm loot-status">
@@ -991,7 +960,7 @@
                       <option value="自用">自用</option>
                   </select>
               </div>
-              <div class="col-1 text-center">
+              <div class="col-1 text-center ps-0">
                   <button type="button" class="btn btn-sm btn-danger btn-remove-loot px-1">✖</button>
               </div>
           `;
@@ -1000,48 +969,34 @@
       if (e.target.classList.contains('btn-remove-loot')) { e.target.closest('.row').remove(); }
   });
 
-  // 💡 【智慧過濾核心】只載入這週期內還沒打的王
   function loadRoutineBosses(isManual = false) {
       if(!bossSelectMaster || document.body.classList.contains("edit-mode-active")) return;
-      
       const routineList = userSettings.routineBosses[activeChar] || [];
       if (routineList.length === 0) {
           if (isManual) showToast("您尚未設定常規名單，請先點擊「⚙️ 設定每週目標」進行設定！", "warning");
           return;
       }
-
       const recordDate = document.getElementById("input-date-master").value || getLocalDateString(getTWNow());
       const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
-      
       let clearedBosses = new Set();
       
       currentRecordsData.forEach(d => {
           if (d.character_name !== activeChar || d.item_name !== "無") return; 
-          
           const isMonthly = monthlyBosses.includes(d.boss_name);
           const bounds = getCycleBoundaries(recordDate, isMonthly); 
           const rd = new Date(d.date + "T00:00:00");
-          
-          if (rd >= bounds.start && rd <= bounds.end) {
-              clearedBosses.add(d.boss_name);
-          }
+          if (rd >= bounds.start && rd <= bounds.end) { clearedBosses.add(d.boss_name); }
       });
 
       const pendingBosses = routineList.filter(boss => !clearedBosses.has(boss));
-
       if (routineList.length > 0 && pendingBosses.length === 0) {
           if (isManual) showToast("🎉 本週期常規目標已全數完成！", "success");
-          bossSelectMaster.clear(true);
-          return;
+          bossSelectMaster.clear(true); return;
       }
-
       bossSelectMaster.setValue(pendingBosses);
   }
   
-  document.getElementById("btn-load-routine-quick").addEventListener("click", (e) => {
-      e.preventDefault(); 
-      loadRoutineBosses(true);
-  });
+  document.getElementById("btn-load-routine-quick").addEventListener("click", (e) => { e.preventDefault(); loadRoutineBosses(true); });
 
   function renderBossCheckboxes(containerId, checkboxClass, checkedList) {
       const container = document.getElementById(containerId); container.innerHTML = "";
@@ -1085,14 +1040,10 @@
       let selected = [];
       document.querySelectorAll(".routine-checkbox:checked").forEach(chk => { selected.push(chk.value); });
       userSettings.routineBosses[activeChar] = selected;
-      
       try {
           await saveUserSettings();
           const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
-          initMasterSelect(); 
-          loadRoutineBosses(false); 
-          renderRoutineTable(getWeekBoundaries()); 
-          renderLootTable();
+          initMasterSelect(); loadRoutineBosses(false); renderRoutineTable(getWeekBoundaries()); renderLootTable();
       } catch(e) { showToast("常規儲存失敗！", "danger"); }
   });
 
@@ -1236,11 +1187,7 @@
               }
 
               activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
-              resetMasterForm(); 
-              initMasterSelect(); 
-              renderSidebar(); 
-              loadRecords(); 
-              hideOffcanvas();
+              resetMasterForm(); initMasterSelect(); renderSidebar(); loadRecords(); hideOffcanvas();
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
@@ -1265,17 +1212,13 @@
                               const batch = writeBatch(db);
                               qs.forEach(d => batch.delete(doc(db, "DropRecords", d.id)));
                               await batch.commit();
-                          } catch(err) {
-                              console.error("刪除角色歷史紀錄失敗", err);
-                              showToast("部分雲端數據刪除失敗，請檢查網路狀態", "danger");
-                          }
+                          } catch(err) { showToast("部分雲端數據刪除失敗", "danger"); }
                       }
 
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
                       } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
-                      resetMasterForm();
-                      saveUserSettings(); renderSidebar(); loadRecords(); 
+                      resetMasterForm(); saveUserSettings(); renderSidebar(); loadRecords(); 
                   }
               } else { 
                   const newCharName = action.trim();
@@ -1284,18 +1227,9 @@
                       const oldCharName = charName;
                       userSettings.characters[index] = newCharName; 
                       
-                      if (userSettings.routineBosses[oldCharName]) {
-                          userSettings.routineBosses[newCharName] = [...userSettings.routineBosses[oldCharName]];
-                          delete userSettings.routineBosses[oldCharName];
-                      }
-                      if (userSettings.weeklyTasks[oldCharName]) {
-                          userSettings.weeklyTasks[newCharName] = {...userSettings.weeklyTasks[oldCharName]};
-                          delete userSettings.weeklyTasks[oldCharName];
-                      }
-                      if (userSettings.bossTemplates && userSettings.bossTemplates[oldCharName]) {
-                          userSettings.bossTemplates[newCharName] = {...userSettings.bossTemplates[oldCharName]};
-                          delete userSettings.bossTemplates[oldCharName];
-                      }
+                      if (userSettings.routineBosses[oldCharName]) { userSettings.routineBosses[newCharName] = [...userSettings.routineBosses[oldCharName]]; delete userSettings.routineBosses[oldCharName]; }
+                      if (userSettings.weeklyTasks[oldCharName]) { userSettings.weeklyTasks[newCharName] = {...userSettings.weeklyTasks[oldCharName]}; delete userSettings.weeklyTasks[oldCharName]; }
+                      if (userSettings.bossTemplates && userSettings.bossTemplates[oldCharName]) { userSettings.bossTemplates[newCharName] = {...userSettings.bossTemplates[oldCharName]}; delete userSettings.bossTemplates[oldCharName]; }
 
                       if (activeChar === oldCharName) { activeChar = newCharName; userSettings.lastActiveChar = activeChar; }
                       
@@ -1307,13 +1241,8 @@
                               const ref = doc(db, "DropRecords", d.id);
                               batch.update(ref, { character_name: newCharName, uid_char_key: `${currentUserUid}_${newCharName}` });
                           });
-                          await batch.commit();
-                          await saveUserSettings(); 
-                          renderSidebar(); loadRecords(); 
-                      } catch (err) {
-                          console.error("更新歷史紀錄失敗", err);
-                          showToast("資料庫同步失敗，請重試！", "danger");
-                      }
+                          await batch.commit(); await saveUserSettings(); renderSidebar(); loadRecords(); 
+                      } catch (err) { showToast("資料庫同步失敗，請重試！", "danger"); }
                   }
               }
               hideOffcanvas();
@@ -1329,11 +1258,7 @@
           const charName = newChar.trim();
           if (!userSettings.characters.includes(charName)) { userSettings.characters.push(charName); }
           activeChar = charName; userSettings.lastActiveChar = activeChar; 
-          try {
-              await saveUserSettings(); 
-              resetMasterForm();
-              renderSidebar(); loadRecords(); hideOffcanvas();
-          } catch(err) { showToast("新增角色失敗！", "danger"); }
+          try { await saveUserSettings(); resetMasterForm(); renderSidebar(); loadRecords(); hideOffcanvas(); } catch(err) { showToast("新增角色失敗！", "danger"); }
       } 
   });
 
@@ -1346,7 +1271,9 @@
       
       let dateDrops = {};
       records.forEach(r => { 
-          if(r.character_name === activeChar && r.item_name && r.item_name !== "無") {
+          // 💡 只有用楓幣交易的物品才計入歐洲度
+          let isMeso = (!r.currency || r.currency === 'meso');
+          if(r.character_name === activeChar && r.item_name && r.item_name !== "無" && isMeso) {
               if(!dateDrops[r.date]) dateDrops[r.date] = { value: 0, count: 0 };
               dateDrops[r.date].value += (parseFloat(r.item_total_price_billion) || 0);
               dateDrops[r.date].count += 1;
@@ -1378,7 +1305,6 @@
       });
   }
 
-  // 💡 獨立出日期計算邏輯，讓不同功能共用
   function getDashboardDateRange() {
       const rangeType = document.getElementById("overview-quick-range").value;
       const startDateInput = document.getElementById("overview-start-date").value;
@@ -1418,7 +1344,8 @@
       const range = getDashboardDateRange();
       if(!range) return;
 
-      let accountCrystal = 0; let accountDividend = 0; let charWeeklyCount = 0;
+      // 💡 雙幣統計：分離楓幣與台幣
+      let accountCrystal = 0; let accountDivMeso = 0; let accountDivTwd = 0; let charWeeklyCount = 0;
       const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"]; 
       const boundaries = getWeekBoundaries();
 
@@ -1426,8 +1353,10 @@
           const rd = new Date(data.date + "T00:00:00");
           if (rd >= range.start && rd <= range.end) {
               accountCrystal += data.crystal_income_billion || 0;
-              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.status !== "自用" && data.my_dividend_billion > 0) {
-                  accountDividend += data.my_dividend_billion;
+              if (data.item_name && data.item_name !== "無" && data.payout_status === "已結清" && data.status !== "自用") {
+                  let isTwd = data.currency === 'twd';
+                  if (isTwd && data.my_dividend_twd > 0) accountDivTwd += data.my_dividend_twd;
+                  else if (!isTwd && data.my_dividend_billion > 0) accountDivMeso += data.my_dividend_billion;
               }
           }
           if (data.character_name === activeChar && rd >= boundaries.thisWeekStart) {
@@ -1438,7 +1367,8 @@
       });
 
       document.getElementById("account-total-crystal").innerText = accountCrystal.toFixed(2) + " 億";
-      document.getElementById("account-total-settled").innerText = accountDividend.toFixed(2) + " 億";
+      document.getElementById("account-total-settled").innerText = accountDivMeso.toFixed(2) + " 億";
+      document.getElementById("account-total-settled-twd").innerText = accountDivTwd.toLocaleString() + " 元";
       document.getElementById("weekly-limit-count").innerText = charWeeklyCount;
       document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
   }
@@ -1447,7 +1377,7 @@
   document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
 
-  // 💡 修改：計算與渲染歐氣值排行榜 (包含自己 + 連動右上角時間)
+  // 💡 歐氣排行榜 (加入歸戶切換、台幣排除、連摃統計)
   function renderLuckBoard() {
       const container = document.getElementById("luck-board-container");
       container.innerHTML = "<div class='text-center text-muted'>正在透過大數據玄學計算中...</div>";
@@ -1460,32 +1390,58 @@
 
       let stats = {}; 
       let processedRuns = new Set(); 
+      const myUnifiedName = "👤 本人 (全帳號總和)";
+      const isMerged = document.getElementById('luck-merge-chars').checked;
 
+      // 為了算連摃，我們需要確保是按日期「新到舊」處理，currentRecordsData 已經是降序排列
       currentRecordsData.forEach(record => {
           const rd = new Date(record.date + "T00:00:00");
-          // ⚠️ 核心過濾機制：依據右上角選擇的區間
           if (rd < range.start || rd > range.end) return;
 
-          // ⚠️ 核心修改：將自己與隊友合併計算
-          let participants = [record.character_name];
-          if (record.teammates && record.teammates.length > 0) {
-              participants = participants.concat(record.teammates);
+          let participants = new Set();
+          if (isMerged) {
+              participants.add(myUnifiedName);
+              if (record.teammates && record.teammates.length > 0) {
+                  record.teammates.forEach(t => {
+                      if (userSettings.characters.includes(t)) participants.add(myUnifiedName);
+                      else participants.add(t);
+                  });
+              }
+          } else {
+              participants.add(record.character_name);
+              if (record.teammates && record.teammates.length > 0) {
+                  record.teammates.forEach(t => participants.add(t));
+              }
           }
 
+          let pArray = Array.from(participants);
           let runKey = record.batch_id || `${record.date}_${record.boss_name}`;
+          
+          // 台幣交易不計入「歐氣楓幣產值」，但算作有掉寶 (中斷連摃)
           let hasDrop = record.item_name && record.item_name !== "無";
-          let dropValue = hasDrop ? (parseFloat(record.item_total_price_billion) || 0) : 0;
+          let isMeso = (!record.currency || record.currency === 'meso');
+          let dropValue = (hasDrop && isMeso) ? (parseFloat(record.item_total_price_billion) || 0) : 0;
 
-          participants.forEach(name => {
-              if (!stats[name]) { stats[name] = { name: name, runs: 0, totalValue: 0, blankRuns: 0 }; }
+          pArray.forEach(name => {
+              if (!stats[name]) { stats[name] = { name: name, runs: 0, totalValue: 0, blankRuns: 0, currentDryStreak: 0, hitDrop: false }; }
 
               let teamRunKey = `${name}_${runKey}`;
               if (!processedRuns.has(teamRunKey)) {
                   stats[name].runs += 1;
-                  if (!hasDrop) { stats[name].blankRuns += 1; }
+                  if (!hasDrop) { 
+                      stats[name].blankRuns += 1; 
+                      if (!stats[name].hitDrop) stats[name].currentDryStreak += 1; // 還沒遇到近期的寶，連摃繼續加
+                  } else {
+                      stats[name].hitDrop = true; // 遇到了！中斷連摃計算
+                  }
                   processedRuns.add(teamRunKey);
               } else if (hasDrop) {
+                  // 同一場有多筆，這筆是掉寶，修正剛剛算錯的白工與連摃
                   stats[name].blankRuns -= 1; 
+                  if (!stats[name].hitDrop) {
+                      stats[name].currentDryStreak -= 1; // 扣除剛剛加的連摃
+                      stats[name].hitDrop = true; 
+                  }
               }
 
               stats[name].totalValue += dropValue;
@@ -1498,11 +1454,11 @@
               runs: player.runs,
               totalValue: player.totalValue,
               luckIndex: player.runs > 0 ? (player.totalValue / player.runs) : 0,
-              blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
+              blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0,
+              dryStreak: player.currentDryStreak
           };
       });
 
-      // 依照歐氣指數降序排列
       leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
       if(leaderboard.length === 0) {
@@ -1512,29 +1468,28 @@
 
       let html = "";
       leaderboard.forEach((p, index) => {
-          let tierClass = "tier-b";
-          let titleClass = "title-b";
-          let titleText = "✨ 穩定發揮中";
+          let tierClass = "tier-b"; let titleClass = "title-b"; let titleText = "✨ 穩定發揮中";
 
-          if (p.luckIndex > 1.5) {
-              tierClass = "tier-s"; titleClass = "title-s"; titleText = "👑 行走的掉寶霸主";
-          } else if (p.luckIndex > 0.5) {
-              tierClass = "tier-a"; titleClass = "title-a"; titleText = "🌟 歐洲血統";
-          } else if (p.luckIndex <= 0.1 && p.blankRate >= 70) {
-              tierClass = "tier-f"; titleClass = "title-f"; titleText = "🌚 絕望的避雷針";
-          } else if (p.runs >= 5 && p.luckIndex == 0) {
-              tierClass = "tier-f"; titleClass = "title-f"; titleText = "💀 純淨無瑕(沒掉過寶)";
-          }
+          if (p.luckIndex > 1.5) { tierClass = "tier-s"; titleClass = "title-s"; titleText = "👑 行走的掉寶霸主"; } 
+          else if (p.luckIndex > 0.5) { tierClass = "tier-a"; titleClass = "title-a"; titleText = "🌟 歐洲血統"; } 
+          else if (p.luckIndex <= 0.1 && p.blankRate >= 70) { tierClass = "tier-f"; titleClass = "title-f"; titleText = "🌚 絕望的避雷針"; } 
+          else if (p.runs >= 5 && p.luckIndex == 0) { tierClass = "tier-f"; titleClass = "title-f"; titleText = "💀 純淨無瑕(沒掉過寶)"; }
+
+          // 連摃警示標籤
+          let dryBadge = "";
+          if (p.dryStreak >= 10) dryBadge = `<span class="badge bg-danger ms-2">🔴 連摃 ${p.dryStreak} 場</span>`;
+          else if (p.dryStreak >= 5) dryBadge = `<span class="badge bg-warning text-dark ms-2">🟡 連摃 ${p.dryStreak} 場</span>`;
 
           let rankTrophy = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `<span class="text-muted ms-1 me-2">${index+1}.</span>`));
           
-          // 若為當前角色，加上 (自己) 標示並改顏色
-          let displayName = p.name === activeChar ? `<span class="text-primary">${p.name} (自己)</span>` : p.name;
+          let displayName = p.name;
+          if (p.name === myUnifiedName) displayName = `<span class="text-primary fw-bolder">${p.name}</span>`;
+          else if (userSettings.characters.includes(p.name)) displayName = `<span class="text-info">${p.name} (分身)</span>`;
 
           html += `
               <div class="p-3 luck-card ${tierClass}">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                      <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${displayName}</h5>
+                      <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${displayName} ${dryBadge}</h5>
                       <span class="luck-title ${titleClass}">${titleText}</span>
                   </div>
                   <div class="row text-center mt-3">
@@ -1555,12 +1510,11 @@
               </div>
           `;
       });
-
       container.innerHTML = html;
   }
 
-  // 綁定 Modal 打開時觸發計算
   document.getElementById('luckModal').addEventListener('show.bs.modal', renderLuckBoard);
+  document.getElementById('luck-merge-chars').addEventListener('change', renderLuckBoard);
 
   async function loadRecords() {
       if(!currentUserUid) return;
@@ -1576,9 +1530,7 @@
           querySnapshot.forEach((doc) => { 
               let data = doc.data(); 
               data.id = doc.id; 
-              if (data.date >= limitDateStr) {
-                  records.push(data); 
-              }
+              if (data.date >= limitDateStr) { records.push(data); }
           });
           
           currentRecordsData = records.sort((a, b) => new Date(b.date) - new Date(a.date)); 
@@ -1588,19 +1540,13 @@
           updateCharacterStats(boundaries);
           renderRoutineTable(boundaries);
           renderLootTable();
-          
-          // 自動預載常規任務 (不會跳出打擾通知)
           loadRoutineBosses(false);
-
-      } catch (error) { 
-          console.error("載入紀錄失敗:", error); 
-          showToast("無法連線至資料庫，請檢查網路狀態", "danger");
-      }
+      } catch (error) { showToast("無法連線至資料庫，請檢查網路狀態", "danger"); }
   }
 
   function updateCharacterStats(boundaries) {
       const weekFilter = document.getElementById("filter-week-routine").value;
-      let totalCrystal = 0, totalDividend = 0, pendingCount = 0, unsettledCount = 0;
+      let totalCrystal = 0, totalDivMeso = 0, totalDivTwd = 0, pendingCount = 0, unsettledCount = 0;
 
       currentRecordsData.forEach(data => {
           if (data.character_name !== activeChar) return;
@@ -1615,13 +1561,17 @@
               if (data.status !== "自用") {
                   if (data.status === "待售出") pendingCount++;
                   if (data.payout_status === "未結清") unsettledCount++;
-                  if (data.payout_status === "已結清" && data.my_dividend_billion > 0) totalDividend += data.my_dividend_billion;
+                  if (data.payout_status === "已結清") {
+                      if (data.currency === 'twd' && data.my_dividend_twd > 0) totalDivTwd += data.my_dividend_twd;
+                      else if ((!data.currency || data.currency === 'meso') && data.my_dividend_billion > 0) totalDivMeso += data.my_dividend_billion;
+                  }
               }
           }
       });
 
       document.getElementById("stat-crystal").innerText = `${totalCrystal.toFixed(2)} 億`;
-      document.getElementById("stat-drop").innerText = `${totalDividend.toFixed(2)} 億`;
+      document.getElementById("stat-drop").innerText = `${totalDivMeso.toFixed(2)} 億`;
+      document.getElementById("stat-drop-twd").innerText = `${totalDivTwd.toLocaleString()}`;
       document.getElementById("stat-pending").innerText = `${pendingCount} 件`;
       document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`;
   }
@@ -1680,9 +1630,7 @@
       if (isManageMode.routine) {
           const cbAll = document.getElementById("cb-all-routine");
           if(cbAll) {
-              cbAll.addEventListener("change", (e) => {
-                  document.querySelectorAll(".cb-routine-item").forEach(cb => cb.checked = e.target.checked);
-              });
+              cbAll.addEventListener("change", (e) => { document.querySelectorAll(".cb-routine-item").forEach(cb => cb.checked = e.target.checked); });
           }
       }
   }
@@ -1721,6 +1669,13 @@
           let badgeHtml = isRoutine ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
           let settleBtn = (data.payout_status === "未結清" && data.status !== "自用") ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1 action-lock" data-id="${data.id}">✅ 結清</button>` : '';
 
+          // 💡 UI 雙幣顯示邏輯
+          let isTwd = data.currency === 'twd';
+          let priceStr = isTwd ? `${(data.item_total_price_twd || 0).toLocaleString()} 元` : `${(data.item_total_price_billion || 0).toFixed(2)} 億`;
+          let divStr = data.status === '自用' ? (isTwd ? "0 元" : "0 億") : (isTwd ? `${(data.my_dividend_twd || 0).toLocaleString()} 元` : `${(data.my_dividend_billion || 0).toFixed(2)} 億`);
+          let priceClass = isTwd ? "currency-twd" : "";
+          let divClass = isTwd ? "currency-twd" : "dividend-text";
+
           html += `
               <tr>
                   ${isManageMode.loot ? `<td data-label="☑️ 選取"><input type="checkbox" class="form-check-input cb-loot-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
@@ -1729,8 +1684,8 @@
                       <small class="text-muted">${badgeHtml}${data.date} | ${data.boss_name}</small>
                   </td>
                   <td data-label="💰 帳務">
-                      <div class="text-muted" style="font-size:0.85em;">市價: ${(data.item_total_price_billion || 0).toFixed(2)} 億</div>
-                      <div class="dividend-text">${dividendLabel}: +${data.status === '自用' ? 0 : (data.my_dividend_billion || 0).toFixed(2)} 億</div>
+                      <div class="text-muted mb-1" style="font-size:0.85em;">市價: <span class="${priceClass}">${priceStr}</span></div>
+                      <div class="${divClass} fs-6">${dividendLabel}: +${divStr}</div>
                   </td>
                   <td data-label="📊 狀態"><div class="d-flex flex-column gap-0 align-items-center">${sBadge}${pBadge}</div></td> 
                   ${isManageMode.loot ? '' : `
@@ -1749,11 +1704,7 @@
 
       if (isManageMode.loot) {
           const cbAll = document.getElementById("cb-all-loot");
-          if(cbAll) {
-              cbAll.addEventListener("change", (e) => {
-                  document.querySelectorAll(".cb-loot-item").forEach(cb => cb.checked = e.target.checked);
-              });
-          }
+          if(cbAll) { cbAll.addEventListener("change", (e) => { document.querySelectorAll(".cb-loot-item").forEach(cb => cb.checked = e.target.checked); }); }
       }
   }
 
@@ -1804,12 +1755,8 @@
                   document.getElementById("btn-cancel-manage-routine").click();
                   loadRecords();
                   showToast(`成功刪除 ${checkedBoxes.length} 筆資料`, "success");
-              } catch(e) {
-                  showToast("批次刪除失敗", "danger");
-              } finally {
-                  document.getElementById("btn-batch-delete-routine").disabled = false;
-                  document.getElementById("btn-batch-delete-routine").innerText = "刪除選取項目";
-              }
+              } catch(e) { showToast("批次刪除失敗", "danger"); } 
+              finally { document.getElementById("btn-batch-delete-routine").disabled = false; document.getElementById("btn-batch-delete-routine").innerText = "刪除選取項目"; }
           }},
           { text: "取消", class: "btn-light", dismiss: true }
       ]);
@@ -1830,12 +1777,8 @@
                   document.getElementById("btn-cancel-manage-loot").click();
                   loadRecords();
                   showToast(`成功刪除 ${checkedBoxes.length} 筆資料`, "success");
-              } catch(e) {
-                  showToast("批次刪除失敗", "danger");
-              } finally {
-                  document.getElementById("btn-batch-delete-loot").disabled = false;
-                  document.getElementById("btn-batch-delete-loot").innerText = "刪除選取項目";
-              }
+              } catch(e) { showToast("批次刪除失敗", "danger"); } 
+              finally { document.getElementById("btn-batch-delete-loot").disabled = false; document.getElementById("btn-batch-delete-loot").innerText = "刪除選取項目"; }
           }},
           { text: "取消", class: "btn-light", dismiss: true }
       ]);
@@ -1871,16 +1814,14 @@
               const runRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.boss_name === boss && d.date === originalDate && (d.batch_id === originalEditedDoc?.batch_id || !d.batch_id));
               
               runRecords.forEach(runDoc => {
-                  let updateData = { 
-                      date: recordDate,
-                      total_players: partySize, 
-                      teammates: teamArray 
-                  };
+                  let updateData = { date: recordDate, total_players: partySize, teammates: teamArray };
                   
                   if (runDoc.item_name === "無") {
                       updateData.crystal_income_billion = parseFloat(((bossCrystalPrices[boss] || 0) / partySize).toFixed(2));
                   } else {
-                      let price = runDoc.item_total_price_billion || 0;
+                      let currency = runDoc.currency || 'meso';
+                      let priceMeso = runDoc.item_total_price_billion || 0;
+                      let priceTwd = runDoc.item_total_price_twd || 0;
                       let status = runDoc.status;
                       let payout = runDoc.payout_status;
 
@@ -1888,16 +1829,26 @@
                           const row = document.querySelector(`.boss-loot-container[data-boss="${boss}"] .row[data-doc-id="${editId}"]`);
                           if (row) {
                               updateData.item_name = row.querySelector('.loot-name').value.trim();
-                              price = parseFloat(row.querySelector('.loot-price').value) || 0;
+                              
+                              // 💡 UI 修改：讀取幣值
+                              currency = row.querySelector('.loot-currency').value;
+                              let rawPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                              priceMeso = currency === 'meso' ? rawPrice : 0;
+                              priceTwd = currency === 'twd' ? rawPrice : 0;
+
                               status = row.querySelector('.loot-status').value;
                               payout = status === "自用" ? "無需分帳" : "未結清";
                               
-                              updateData.item_total_price_billion = price;
+                              updateData.currency = currency;
+                              updateData.item_total_price_billion = priceMeso;
+                              updateData.item_total_price_twd = priceTwd;
                               updateData.status = status;
                               updateData.payout_status = payout;
                           }
                       }
-                      updateData.my_dividend_billion = status === "自用" ? 0 : (price > 0 ? parseFloat((partySize > 1 ? price / partySize : price).toFixed(2)) : 0);
+                      
+                      updateData.my_dividend_billion = status === "自用" ? 0 : (priceMeso > 0 ? parseFloat((partySize > 1 ? priceMeso / partySize : priceMeso).toFixed(2)) : 0);
+                      updateData.my_dividend_twd = status === "自用" ? 0 : (priceTwd > 0 ? Math.floor(partySize > 1 ? priceTwd / partySize : priceTwd) : 0);
                   }
                   promises.push(updateDoc(doc(db, "DropRecords", runDoc.id), updateData));
               });
@@ -1905,21 +1856,27 @@
               const newLootRows = document.querySelectorAll(`.boss-loot-container[data-boss="${boss}"] .row:not([data-doc-id])`);
               newLootRows.forEach(row => {
                   const itemName = row.querySelector('.loot-name').value.trim();
-                  const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                  const currency = row.querySelector('.loot-currency').value;
+                  const rawPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
                   const statusVal = row.querySelector('.loot-status').value;
+                  
                   if (itemName) {
                       if (!defaultItemOptions.some(d => d.value === itemName) && !userSettings.customItems.includes(itemName)) {
                           userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
                       }
+                      let priceMeso = currency === 'meso' ? rawPrice : 0;
+                      let priceTwd = currency === 'twd' ? rawPrice : 0;
                       let payout = statusVal === "自用" ? "無需分帳" : "未結清";
-                      let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((partySize > 1 ? itemPrice / partySize : itemPrice).toFixed(2)) : 0);
+                      let divMeso = statusVal === "自用" ? 0 : (priceMeso > 0 ? parseFloat((partySize > 1 ? priceMeso / partySize : priceMeso).toFixed(2)) : 0);
+                      let divTwd = statusVal === "自用" ? 0 : (priceTwd > 0 ? Math.floor(partySize > 1 ? priceTwd / partySize : priceTwd) : 0);
 
                       promises.push(addDoc(collection(db, "DropRecords"), {
                           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
                           date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize, batch_id: originalEditedDoc?.batch_id || batchId,
                           crystal_income_billion: 0, 
-                          item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend,
-                          status: statusVal, payout_status: payout
+                          item_name: itemName, status: statusVal, payout_status: payout, currency: currency,
+                          item_total_price_billion: priceMeso, my_dividend_billion: divMeso,
+                          item_total_price_twd: priceTwd, my_dividend_twd: divTwd
                       }));
                   }
               });
@@ -1951,29 +1908,34 @@
                       promises.push(addDoc(collection(db, "DropRecords"), {
                           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, batch_id: batchId,
                           date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
-                          crystal_income_billion: baseCrystal, item_name: "無", my_dividend_billion: 0, item_total_price_billion: 0,
-                          status: "僅紀錄", payout_status: "無需分帳"
+                          crystal_income_billion: baseCrystal, item_name: "無", status: "僅紀錄", payout_status: "無需分帳", currency: "meso",
+                          item_total_price_billion: 0, my_dividend_billion: 0, item_total_price_twd: 0, my_dividend_twd: 0
                       }));
                   }
 
                   lootRows.forEach(row => {
                       const itemName = row.querySelector('.loot-name').value.trim();
-                      const itemPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
+                      const currency = row.querySelector('.loot-currency').value;
+                      const rawPrice = parseFloat(row.querySelector('.loot-price').value) || 0;
                       const statusVal = row.querySelector('.loot-status').value;
                       
                       if (itemName) {
                           if (!defaultItemOptions.some(d => d.value === itemName) && !userSettings.customItems.includes(itemName)) {
                               userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
                           }
+                          let priceMeso = currency === 'meso' ? rawPrice : 0;
+                          let priceTwd = currency === 'twd' ? rawPrice : 0;
                           let payout = statusVal === "自用" ? "無需分帳" : "未結清";
-                          let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((partySize > 1 ? itemPrice / partySize : itemPrice).toFixed(2)) : 0);
+                          let divMeso = statusVal === "自用" ? 0 : (priceMeso > 0 ? parseFloat((partySize > 1 ? priceMeso / partySize : priceMeso).toFixed(2)) : 0);
+                          let divTwd = statusVal === "自用" ? 0 : (priceTwd > 0 ? Math.floor(partySize > 1 ? priceTwd / partySize : priceTwd) : 0);
 
                           promises.push(addDoc(collection(db, "DropRecords"), {
                               uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, batch_id: batchId,
                               date: recordDate, boss_name: boss, teammates: teamArray, total_players: partySize,
                               crystal_income_billion: 0, 
-                              item_name: itemName, item_total_price_billion: itemPrice, my_dividend_billion: dividend,
-                              status: statusVal, payout_status: payout
+                              item_name: itemName, status: statusVal, payout_status: payout, currency: currency,
+                              item_total_price_billion: priceMeso, my_dividend_billion: divMeso,
+                              item_total_price_twd: priceTwd, my_dividend_twd: divTwd
                           }));
                       }
                   });
@@ -2010,13 +1972,9 @@
       document.getElementById("form-master").reset();
       document.getElementById("edit-doc-id-master").value = "";
       document.getElementById("edit-type-master").value = "";
-      
       document.getElementById("input-date-master").value = currentSelectedDate || getLocalDateString(getTWNow());
       
-      if (bossSelectMaster) {
-          bossSelectMaster.clear(true); 
-          bossSelectMaster.unlock(); 
-      }
+      if (bossSelectMaster) { bossSelectMaster.clear(true); bossSelectMaster.unlock(); }
       document.getElementById("dynamic-boss-configs").innerHTML = '';
       
       document.getElementById("global-accordion-controls").classList.add("d-none");
@@ -2029,8 +1987,6 @@
       saveBtnMaster.disabled = false;
       
       document.body.classList.remove("edit-mode-active");
-
-      // 🔄 重置後自動載入剩餘待辦
       loadRoutineBosses(false);
   }
 
@@ -2041,8 +1997,7 @@
           btnSettle.innerText = "..."; btnSettle.disabled = true;
           try {
               await updateDoc(doc(db, "DropRecords", docId), { payout_status: "已結清", status: "已售出" });
-              loadRecords(); 
-              showToast("✅ 帳款已結清", "success");
+              loadRecords(); showToast("✅ 帳款已結清", "success");
           } catch (error) { 
               showToast("結清失敗，請稍後重試！", "danger"); 
               btnSettle.innerText = "✅ 結清"; btnSettle.disabled = false; 
@@ -2087,12 +2042,8 @@
                   } else {
                       await deleteDoc(doc(db, "DropRecords", docId)); 
                   }
-                  showToast("✅ 紀錄已刪除", "success");
-                  loadRecords(); 
-              } catch(err) { 
-                  showToast("刪除失敗", "danger");
-                  btnDel.disabled = false;
-              }
+                  showToast("✅ 紀錄已刪除", "success"); loadRecords(); 
+              } catch(err) { showToast("刪除失敗", "danger"); btnDel.disabled = false; }
           }
           return; 
       }
@@ -2103,13 +2054,9 @@
           const d = currentRecordsData.find(x => x.id === docId);
           if (!d) return;
 
-          resetMasterForm(); 
-          
-          document.body.classList.add("edit-mode-active");
-
+          resetMasterForm(); document.body.classList.add("edit-mode-active");
           document.getElementById("edit-doc-id-master").value = docId; document.getElementById("edit-type-master").value = type;
           document.getElementById("input-date-master").value = d.date;
-          
           bossSelectMaster.setValue([d.boss_name]); bossSelectMaster.lock(); 
 
           requestAnimationFrame(() => {
@@ -2129,16 +2076,17 @@
                       const lastRow = lootRows[lootRows.length - 1];
                       
                       lastRow.setAttribute('data-doc-id', d.id); 
-                      
                       lastRow.querySelector('.loot-name').value = d.item_name;
-                      lastRow.querySelector('.loot-price').value = d.item_total_price_billion || "";
-                      lastRow.querySelector('.loot-status').value = d.status || "待售出";
                       
+                      // 回填雙幣數值
+                      let isTwd = d.currency === 'twd';
+                      lastRow.querySelector('.loot-currency').value = isTwd ? 'twd' : 'meso';
+                      lastRow.querySelector('.loot-price').value = isTwd ? (d.item_total_price_twd || "") : (d.item_total_price_billion || "");
+                      
+                      lastRow.querySelector('.loot-status').value = d.status || "待售出";
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
-                  
-                  const bsTab = new bootstrap.Tab(document.querySelector('#pills-routine-tab'));
-                  bsTab.show();
+                  const bsTab = new bootstrap.Tab(document.querySelector('#pills-routine-tab')); bsTab.show();
               }
               
               document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊伍)"; 
@@ -2154,7 +2102,9 @@
       if(drops.length === 0){ showToast("目前沒有未結清的寶物帳務。", "warning"); return; }
       let report = `📦 ${activeChar} 未結清帳務清單 📦\n------------------------\n`;
       drops.forEach(d => {
-          let s = d.status === "待售出" ? "⏳ 待售出" : `💰 售價 ${d.item_total_price_billion}億`;
+          let isTwd = d.currency === 'twd';
+          let priceStr = isTwd ? `${(d.item_total_price_twd || 0).toLocaleString()}元(台幣)` : `${(d.item_total_price_billion || 0)}億`;
+          let s = d.status === "待售出" ? "⏳ 待售出" : `💰 售價 ${priceStr}`;
           report += `【${d.item_name}】 (${d.boss_name})\n 👉 狀態: ${s} / 帳款: ${d.payout_status}\n`;
           if (d.teammates && d.teammates.length > 0) report += ` 👉 分錢名單: ${d.teammates.join(", ")}\n`;
           report += `\n`;
