@@ -59,6 +59,14 @@
         .accordion-icon { display: inline-block; width: 16px; text-align: center; font-size: 0.85em; transition: transform 0.2s; }
         
         .edit-mode-active .action-lock { pointer-events: none; opacity: 0.3; filter: grayscale(100%); }
+
+        /* 新增頁籤樣式優化 */
+        .nav-pills .nav-link { color: #34495e; border-radius: 8px; margin-right: 8px; padding: 10px 20px; transition: 0.2s; }
+        .nav-pills .nav-link:hover { background-color: #f1f2f6; }
+        .nav-pills .nav-link.active { background-color: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
+        .tab-table-container { max-height: 65vh; overflow-y: auto; }
+        .tab-table-container::-webkit-scrollbar { width: 6px; }
+        .tab-table-container::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -200,7 +208,7 @@
 
         <div class="row mb-4">
             <div class="col-12 col-lg-5 mb-4">
-                <div class="card card-custom p-4 border-top border-primary border-4 shadow-sm">
+                <div class="card card-custom p-4 border-top border-primary border-4 shadow-sm h-100">
                     <h5 class="mb-4 fw-bold" id="form-title-master">⚔️ 討伐結算中心</h5>
                     
                     <form id="form-master">
@@ -229,8 +237,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" id="btn-collapse-all">⏫ 全部收合</button>
                         </div>
 
-                        <div id="dynamic-boss-configs" class="mt-2">
-                        </div>
+                        <div id="dynamic-boss-configs" class="mt-2"></div>
 
                         <div class="d-flex gap-2 mt-4">
                             <button type="button" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow-sm" id="btn-save-master">💾 批次儲存結算</button>
@@ -241,46 +248,66 @@
             </div>
 
             <div class="col-12 col-lg-7">
-                <div class="card card-custom p-4 mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0 fw-bold">📜 結晶與討伐紀錄</h5>
-                        <select class="form-select form-select-sm w-auto" id="filter-week-routine">
-                            <option value="this_week">本週</option>
-                            <option value="last_week">上週</option>
-                            <option value="all">近一年</option>
-                        </select>
-                    </div>
-                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
-                        <table class="table table-hover align-middle text-center">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>日期與目標</th>
-                                    <th>💎 結晶分配</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-body-routine"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card card-custom p-4 shadow-sm h-100">
+                    
+                    <ul class="nav nav-pills mb-3 border-bottom pb-3" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold" id="pills-routine-tab" data-bs-toggle="pill" data-bs-target="#pills-routine" type="button" role="tab" aria-controls="pills-routine" aria-selected="true">
+                                📜 結晶與討伐明細
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="pills-loot-tab" data-bs-toggle="pill" data-bs-target="#pills-loot" type="button" role="tab" aria-controls="pills-loot" aria-selected="false">
+                                📦 寶物與未結清帳務
+                            </button>
+                        </li>
+                    </ul>
 
-                <div class="card card-custom p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0 fw-bold">📦 寶物庫與未結清帳務</h5>
-                        <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
-                    </div>
-                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
-                        <table class="table table-hover align-middle text-center">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>物品與目標</th>
-                                    <th>市價 / 實收</th>
-                                    <th>狀態</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-body-loot"></tbody>
-                        </table>
+                    <div class="tab-content flex-grow-1" id="pills-tabContent">
+                        
+                        <div class="tab-pane fade show active h-100" id="pills-routine" role="tabpanel" aria-labelledby="pills-routine-tab" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted small">紀錄您的討伐歷程與結晶收益</span>
+                                <select class="form-select form-select-sm w-auto" id="filter-week-routine">
+                                    <option value="this_week">本週</option>
+                                    <option value="last_week">上週</option>
+                                    <option value="all">近一年</option>
+                                </select>
+                            </div>
+                            <div class="table-responsive tab-table-container">
+                                <table class="table table-hover align-middle text-center">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>日期與目標</th>
+                                            <th>💎 結晶分配</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-routine"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade h-100" id="pills-loot" role="tabpanel" aria-labelledby="pills-loot-tab" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted small">追蹤待售出物品與未分紅帳款</span>
+                                <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
+                            </div>
+                            <div class="table-responsive tab-table-container">
+                                <table class="table table-hover align-middle text-center">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>物品與目標</th>
+                                            <th>市價 / 實收</th>
+                                            <th>狀態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-loot"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -443,7 +470,7 @@
   let currentUserUid = null; 
   let bossSelectMaster; 
   
-  let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {} };
+  let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
   let activeChar = ""; 
   let currentRecordsData = [];
 
@@ -483,6 +510,7 @@
               if(!userSettings.customItems) userSettings.customItems = [];
               if(!userSettings.routineBosses) userSettings.routineBosses = {};
               if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
+              if(!userSettings.bossTemplates) userSettings.bossTemplates = {}; 
               
               if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
                   activeChar = userSettings.lastActiveChar;
@@ -491,11 +519,11 @@
               }
               initDashboard();
           } else {
-              userSettings = { characters: [], lastActiveChar: "", customItems: data.customItems || [], routineBosses: {}, weeklyTasks: {} };
+              userSettings = { characters: [], lastActiveChar: "", customItems: data.customItems || [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
               showScreen('onboarding');
           }
       } else {
-          userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {} };
+          userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
           showScreen('onboarding');
       }
   }
@@ -607,10 +635,20 @@
               if (!existingCard) {
                   let lastPartySize = 1;
                   let lastTeammates = "";
-                  const lastRecord = currentRecordsData.find(r => r.character_name === activeChar && r.boss_name === boss);
-                  if (lastRecord) {
-                      lastPartySize = lastRecord.total_players || 1;
-                      lastTeammates = (lastRecord.teammates || []).join(" ");
+                  
+                  let hasTemplate = false;
+                  if (userSettings.bossTemplates && userSettings.bossTemplates[activeChar] && userSettings.bossTemplates[activeChar][boss]) {
+                      const template = userSettings.bossTemplates[activeChar][boss];
+                      lastPartySize = template.size || 1;
+                      lastTeammates = template.teammates || "";
+                      hasTemplate = true;
+                  } 
+                  else {
+                      const lastRecord = currentRecordsData.find(r => r.character_name === activeChar && r.boss_name === boss);
+                      if (lastRecord) {
+                          lastPartySize = lastRecord.total_players || 1;
+                          lastTeammates = (lastRecord.teammates || []).join(" ");
+                      }
                   }
 
                   const card = document.createElement('div');
@@ -636,7 +674,14 @@
                                   <option value="6" ${lastPartySize==6?'selected':''}>6 人</option>
                               </select>
                           </div>
-                          <input type="text" class="form-control form-control-sm mb-2 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)" value="${lastTeammates}">
+                          <input type="text" class="form-control form-control-sm mb-1 boss-teammates" data-boss="${boss}" placeholder="隊友名稱 (選填，空格隔開)" value="${lastTeammates}">
+                          
+                          <div class="text-end mb-2">
+                              <button type="button" class="btn btn-sm py-0 px-2 btn-save-template ${hasTemplate ? 'btn-success text-white' : 'btn-outline-info'}" data-boss="${boss}" style="font-size: 0.75em; border-radius: 4px;">
+                                  ${hasTemplate ? '⭐ 已設為預設班底' : '📌 記憶為預設班底'}
+                              </button>
+                          </div>
+
                           <div class="boss-loot-container" data-boss="${boss}"></div>
                           <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 btn-add-loot" data-boss="${boss}">
                               ➕ 新增掉落物品
@@ -676,6 +721,29 @@
   });
 
   document.getElementById('dynamic-boss-configs').addEventListener('click', function(e) {
+      
+      if (e.target.classList.contains('btn-save-template')) {
+          const btn = e.target;
+          const bossName = btn.getAttribute('data-boss');
+          const size = parseInt(document.querySelector(`.boss-party-size[data-boss="${bossName}"]`).value) || 1;
+          const teammates = document.querySelector(`.boss-teammates[data-boss="${bossName}"]`).value.trim();
+
+          if(!userSettings.bossTemplates) userSettings.bossTemplates = {};
+          if(!userSettings.bossTemplates[activeChar]) userSettings.bossTemplates[activeChar] = {};
+
+          userSettings.bossTemplates[activeChar][bossName] = { size, teammates };
+          
+          saveUserSettings().then(() => {
+              btn.innerText = "✅ 儲存成功！";
+              btn.classList.remove("btn-outline-info");
+              btn.classList.add("btn-success", "text-white");
+              setTimeout(() => {
+                  btn.innerText = "⭐ 已設為預設班底";
+              }, 1500);
+          }).catch(err => alert("儲存失敗"));
+          return;
+      }
+
       if (e.target.classList.contains('btn-add-loot')) {
           const bossName = e.target.getAttribute('data-boss');
           const lootContainer = document.querySelector(`.boss-loot-container[data-boss="${bossName}"]`);
@@ -704,9 +772,42 @@
       if (e.target.classList.contains('btn-remove-loot')) { e.target.closest('.row').remove(); }
   });
 
+  // 💡 【智慧過濾核心】只載入這週期內還沒打的王
   function loadRoutineBosses() {
       if(!bossSelectMaster) return;
-      bossSelectMaster.setValue(userSettings.routineBosses[activeChar] || []);
+      
+      const routineList = userSettings.routineBosses[activeChar] || [];
+      if (routineList.length === 0) {
+          alert("您尚未設定常規名單，請先點擊「⚙️ 管理」進行設定！");
+          return;
+      }
+
+      const recordDate = document.getElementById("input-date-master").value || getLocalDateString(getTWNow());
+      const monthlyBosses = ["終極黑魔法師", "困難黑魔法師"];
+      
+      let clearedBosses = new Set();
+      
+      currentRecordsData.forEach(d => {
+          if (d.character_name !== activeChar || d.item_name !== "無") return; 
+          
+          const isMonthly = monthlyBosses.includes(d.boss_name);
+          const bounds = getCycleBoundaries(recordDate, isMonthly); 
+          const rd = new Date(d.date + "T00:00:00");
+          
+          if (rd >= bounds.start && rd <= bounds.end) {
+              clearedBosses.add(d.boss_name);
+          }
+      });
+
+      const pendingBosses = routineList.filter(boss => !clearedBosses.has(boss));
+
+      if (routineList.length > 0 && pendingBosses.length === 0) {
+          alert("🎉 太棒了！您在這個週期內設定的常規目標已經全部討伐完畢！");
+          bossSelectMaster.clear(true);
+          return;
+      }
+
+      bossSelectMaster.setValue(pendingBosses);
   }
   
   document.getElementById("btn-load-routine-quick").addEventListener("click", (e) => {
@@ -890,7 +991,7 @@
               }
 
               activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
-              resetMasterForm(); // 🚀 關鍵修復：切換角色時強制清空表單殘留的 DOM
+              resetMasterForm(); 
               initMasterSelect(); 
               renderSidebar(); 
               loadRecords(); 
@@ -934,7 +1035,6 @@
                       const oldCharName = charName;
                       userSettings.characters[index] = newCharName; 
                       
-                      // 🚀 關鍵修復：舊角色的常規與任務一併繼承到新名字
                       if (userSettings.routineBosses[oldCharName]) {
                           userSettings.routineBosses[newCharName] = [...userSettings.routineBosses[oldCharName]];
                           delete userSettings.routineBosses[oldCharName];
@@ -942,6 +1042,10 @@
                       if (userSettings.weeklyTasks[oldCharName]) {
                           userSettings.weeklyTasks[newCharName] = {...userSettings.weeklyTasks[oldCharName]};
                           delete userSettings.weeklyTasks[oldCharName];
+                      }
+                      if (userSettings.bossTemplates && userSettings.bossTemplates[oldCharName]) {
+                          userSettings.bossTemplates[newCharName] = {...userSettings.bossTemplates[oldCharName]};
+                          delete userSettings.bossTemplates[oldCharName];
                       }
 
                       if (activeChar === oldCharName) { activeChar = newCharName; userSettings.lastActiveChar = activeChar; }
@@ -1513,6 +1617,10 @@
                       
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
+                  
+                  // 切換到表單並滾動
+                  const bsTab = new bootstrap.Tab(document.querySelector('#pills-routine-tab'));
+                  bsTab.show();
               }
               
               document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊伍)"; 
