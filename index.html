@@ -66,9 +66,97 @@
         .tab-table-container { max-height: 65vh; overflow-y: auto; }
         .tab-table-container::-webkit-scrollbar { width: 6px; }
         .tab-table-container::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 4px; }
+
+        /* 手機版表格卡片化 */
+        @media (max-width: 991px) {
+            .tab-table-container table, .tab-table-container thead, .tab-table-container tbody, .tab-table-container th, .tab-table-container td, .tab-table-container tr { display: block; }
+            .tab-table-container thead tr { position: absolute; top: -9999px; left: -9999px; }
+            .tab-table-container tr { border: 1px solid #e0e6ed; margin-bottom: 12px; border-radius: 12px; background: #fff; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+            .tab-table-container td { 
+                border: none; border-bottom: 1px solid #f1f2f6; position: relative; 
+                padding: 10px 0 10px 35% !important; text-align: right !important; 
+                min-height: 40px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end;
+            }
+            .tab-table-container td:last-child { border-bottom: 0; }
+            .tab-table-container td::before { 
+                content: attr(data-label); position: absolute; left: 0; width: 35%; 
+                text-align: left; font-weight: bold; color: #7f8c8d; font-size: 0.85em; white-space: nowrap; 
+            }
+            .tab-table-container td .d-flex.flex-column { flex-direction: row !important; gap: 8px !important; justify-content: flex-end !important; width: 100%;}
+            .tab-table-container td .form-check-input { margin: 0; transform: scale(1.3); }
+        }
+
+        /* 導覽 Modal 樣式微調 */
+        .tutorial-step-title { color: #2980b9; font-weight: bold; border-bottom: 2px solid #ecf0f1; padding-bottom: 4px; margin-bottom: 8px; margin-top: 16px;}
+        .tutorial-highlight { background-color: #fff3cd; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #d35400;}
     </style>
 </head>
 <body>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+    <div id="liveToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body fw-bold text-white fs-6 w-100" id="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dynamicConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-body text-center p-4">
+                <h5 class="fw-bold mb-3 text-dark" id="dc-title">確認操作</h5>
+                <p class="text-muted mb-4" id="dc-message" style="font-size: 0.95em;"></p>
+                <div class="d-flex flex-column gap-2" id="dc-buttons"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tutorialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">📖 系統快速上手指南</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">歡迎使用專屬的收益與帳務管理系統！為了讓你結算每週收益、分紅不再頭痛，請參考以下核心功能：</p>
+                
+                <h6 class="tutorial-step-title">1️⃣ 第一步：建立角色與設定常規</h6>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>新增角色：</strong> 左側選單的「➕ 新增角色」可管理多隻分身。</li>
+                    <li><strong>設定常規：</strong> 點擊結算區的 <span class="tutorial-highlight">⚙️ 設定每週目標</span>，把必打的王打勾並儲存為模板。</li>
+                </ul>
+
+                <h6 class="tutorial-step-title">2️⃣ 第二步：日常打王結算 (超快速)</h6>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>一鍵載入：</strong> 點擊 <span class="tutorial-highlight">⭐ 載入每週常規</span>，系統會<strong class="text-danger">自動過濾掉這週已打過的王</strong>，版面永不凌亂。</li>
+                    <li><strong>固定班底：</strong> 填好人數與隊友名字後，點擊卡片內的 <span class="tutorial-highlight">📌 記憶為預設班底</span>，下週自動帶入！(若找代打只需修改名字不點記憶即可)</li>
+                    <li><strong>儲存結算：</strong> 點擊最下方的「💾 批次儲存結算」一次完成紀錄！</li>
+                </ul>
+
+                <h6 class="tutorial-step-title">3️⃣ 第三步：帳務與分錢管理</h6>
+                <p class="mb-1 text-secondary" style="font-size: 0.9em;">右側版面分為兩個獨立頁籤：</p>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>📜 結晶明細：</strong> 對帳這週哪隻王還沒清。</li>
+                    <li><strong>📦 寶物庫：</strong> 拍賣場東西賣掉後，來這裡點擊「✅ 結清」。</li>
+                    <li><strong>複製對帳：</strong> 點擊 <span class="tutorial-highlight">📋 複製對帳單</span>，自動產出含分錢名單的文字，貼 Line 超方便。</li>
+                </ul>
+
+                <h6 class="tutorial-step-title">4️⃣ 第四步：修改與防呆機制</h6>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>編輯：</strong> 點擊紀錄「編輯」，會自動帶回左側表單修改。</li>
+                    <li><strong>連動刪除：</strong> 點擊刪除時，系統會貼心詢問你<strong>「是否要連同該場次的其他掉寶與結晶一併刪除」</strong>，不用一筆一筆慢慢點！</li>
+                </ul>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">我知道了！開始結算 🚀</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="login-screen" class="container-fluid" style="height: 100vh; background-color: #1a252f; display: flex; flex-direction: column; justify-content: center; align-items: center;">
     <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
@@ -118,8 +206,9 @@
             </div>
 
             <div class="mt-auto d-flex flex-column border-top border-secondary">
+                <a data-bs-toggle="modal" data-bs-target="#tutorialModal" class="sidebar-action text-info bg-dark bg-opacity-25 border-bottom border-secondary">💡 系統快速導覽</a>
                 <a id="btn-add-char" class="sidebar-action text-warning">➕ 新增角色</a>
-                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-info">⚙️ 設定自訂物品</a>
+                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-primary">⚙️ 設定自訂物品</a>
                 <a id="btn-logout" class="sidebar-action text-danger">🚪 登出 (<span id="user-name"></span>)</a>
             </div>
         </div>
@@ -166,9 +255,11 @@
         <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
             <h3 class="mb-0 fw-bold d-flex align-items-center gap-2">
                 <span id="dashboard-title">載入中...</span> 
-                <a id="btn-char-portal" href="#" target="_blank" class="btn btn-sm btn-outline-info d-none" style="border-radius: 20px;">
-                    🔍 查裝備
-                </a>
+                <span data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="前往外部網站查詢此角色的裝備與素質">
+                    <a id="btn-char-portal" href="#" target="_blank" class="btn btn-sm btn-outline-info d-none" style="border-radius: 20px;">
+                        🔍 查裝備
+                    </a>
+                </span>
                 <span class="fs-5 text-muted d-none d-md-inline">收益管理</span>
             </h3>
             <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
@@ -220,13 +311,21 @@
                         </div>
                         
                         <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-end mb-1">
+                            <div class="d-flex justify-content-between align-items-end mb-1 flex-wrap gap-2">
                                 <label class="form-label text-secondary fw-bold mb-0">本次討伐目標 <small class="text-muted">(可多選)</small></label>
-                                <div class="d-flex gap-2">
-                                    <a href="#" id="btn-load-routine-quick" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 載入常規預設</a>
-                                    <a href="#" class="text-decoration-none text-success fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#batchModal">☑️ 批次記錄臨時</a>
-                                    <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 設定每周王</a>
+                                
+                                <div class="d-flex gap-3">
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="一鍵帶入本週還沒打的『常規名單』">
+                                        <a href="#" id="btn-load-routine-quick" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 載入每週常規</a>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="打非常規的王？從難度清單快速打勾帶入">
+                                        <a href="#" class="text-decoration-none text-success fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#batchModal">☑️ 批次勾選臨時</a>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="編輯這隻角色每週/每月必打的王">
+                                        <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 設定每週目標</a>
+                                    </span>
                                 </div>
+
                             </div>
                             <select id="input-boss-master" multiple placeholder="搜尋並選擇目標..."></select>
                         </div>
@@ -239,7 +338,9 @@
                         <div id="dynamic-boss-configs" class="mt-2"></div>
 
                         <div class="d-flex gap-2 mt-4">
-                            <button type="button" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow-sm" id="btn-save-master">💾 批次儲存結算</button>
+                            <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="將畫面上所有設定好的王與寶物存入紀錄區" class="w-100">
+                                <button type="button" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow-sm" id="btn-save-master">💾 批次儲存結算</button>
+                            </span>
                             <button type="button" class="btn btn-outline-secondary py-3 d-none" id="btn-cancel-edit-master">取消編輯</button>
                         </div>
                     </form>
@@ -275,7 +376,9 @@
                                         <option value="last_week">上週</option>
                                         <option value="all">近一年</option>
                                     </select>
-                                    <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-routine">☑️ 批次管理</button>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="進入表格勾選模式，可一次刪除多筆錯誤紀錄">
+                                        <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-routine">☑️ 批次管理</button>
+                                    </span>
                                 </div>
                             </div>
                             
@@ -302,8 +405,12 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-muted small">追蹤待售出物品與未分紅帳款</span>
                                 <div class="d-flex gap-2">
-                                    <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
-                                    <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-loot">☑️ 批次管理</button>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="一鍵複製所有『待售出/未結清』的寶物清單，方便貼到 Line 算帳">
+                                        <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="進入表格勾選模式，可一次刪除多筆錯誤紀錄">
+                                        <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-loot">☑️ 批次管理</button>
+                                    </span>
                                 </div>
                             </div>
 
@@ -409,13 +516,13 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold">⚙️ 管理常規討伐名單</h5>
+        <h5 class="modal-title fw-bold">⚙️ 設定每週目標</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body bg-light" id="routine-checkbox-container"></div>
       <div class="modal-footer d-flex justify-content-between">
         <div>
-            <span class="text-muted d-block" style="font-size: 0.85em;">勾選的王將帶有 ⭐ 標記。</span>
+            <span class="text-muted d-block" style="font-size: 0.85em;">勾選的王將成為每週點擊「⭐ 載入常規」的預設清單。</span>
             <button class="btn btn-sm btn-outline-secondary mt-1" id="btn-routine-toggle-all">全選 / 全不選</button>
         </div>
         <div>
@@ -431,13 +538,13 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold">☑️ 批次勾選討伐目標</h5>
+        <h5 class="modal-title fw-bold">☑️ 批次勾選臨時目標</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body bg-light" id="batch-checkbox-container"></div>
       <div class="modal-footer d-flex justify-content-between">
         <div>
-            <span class="text-muted d-block" style="font-size: 0.85em;">此操作僅將目標帶入目前表單。</span>
+            <span class="text-muted d-block" style="font-size: 0.85em;">此操作僅將打勾的王帶入目前表單，適合清低階王或幫打。</span>
             <button class="btn btn-sm btn-outline-secondary mt-1" id="btn-batch-toggle-all">全選 / 全不選</button>
         </div>
         <div>
@@ -457,6 +564,15 @@
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
+  // 💡 啟用所有 Bootstrap Tooltips (工具提示框)
+  const initTooltips = () => {
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+  };
+  
+  // 初始化
+  document.addEventListener("DOMContentLoaded", initTooltips);
+
   const firebaseConfig = {
     apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
     authDomain: "maplestoryboss.firebaseapp.com",
@@ -472,6 +588,42 @@
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   
+  // 💡 全局 UI 輔助函數 (Toast & Dynamic Modal)
+  window.showToast = function(message, type = "success") {
+      const toastEl = document.getElementById('liveToast');
+      const toastBody = document.getElementById('toast-body');
+      
+      toastBody.innerHTML = message;
+      toastEl.className = `toast align-items-center border-0 text-bg-${type}`;
+      
+      const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+      toast.show();
+  };
+
+  window.showConfirm = function(title, message, buttons) {
+      document.getElementById('dc-title').innerText = title;
+      document.getElementById('dc-message').innerHTML = message;
+      
+      const btnContainer = document.getElementById('dc-buttons');
+      btnContainer.innerHTML = '';
+
+      buttons.forEach(btn => {
+          const buttonEl = document.createElement('button');
+          buttonEl.className = `btn fw-bold ${btn.class}`;
+          buttonEl.innerHTML = btn.text;
+          if(btn.dismiss) buttonEl.setAttribute('data-bs-dismiss', 'modal');
+          if(btn.onClick) {
+              buttonEl.addEventListener('click', () => {
+                  btn.onClick();
+                  bootstrap.Modal.getInstance(document.getElementById('dynamicConfirmModal')).hide();
+              });
+          }
+          btnContainer.appendChild(buttonEl);
+      });
+
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('dynamicConfirmModal')).show();
+  };
+
   function getTWNow() {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -492,7 +644,6 @@
   let activeChar = ""; 
   let currentRecordsData = [];
   
-  // 💡 批次管理狀態
   let isManageMode = { routine: false, loot: false };
 
   const loginScreen = document.getElementById("login-screen");
@@ -570,7 +721,7 @@
   document.getElementById("btn-start-journey").addEventListener("click", async () => {
       const input = document.getElementById("input-first-char");
       const charName = input.value.trim();
-      if (!charName) { alert("請輸入角色名稱才能開始使用喔！"); input.focus(); return; }
+      if (!charName) { showToast("請輸入角色名稱才能開始使用喔！", "warning"); input.focus(); return; }
       userSettings.characters = [charName]; userSettings.lastActiveChar = charName; activeChar = charName;
       await saveUserSettings(); initDashboard();
   });
@@ -761,7 +912,7 @@
               setTimeout(() => {
                   btn.innerText = "⭐ 已設為預設班底";
               }, 1500);
-          }).catch(err => alert("儲存失敗"));
+          }).catch(err => showToast("儲存失敗", "danger"));
           return;
       }
 
@@ -798,7 +949,7 @@
       
       const routineList = userSettings.routineBosses[activeChar] || [];
       if (routineList.length === 0) {
-          alert("您尚未設定常規名單，請先點擊「⚙️ 管理」進行設定！");
+          showToast("您尚未設定常規名單，請先點擊「⚙️ 管理」進行設定！", "warning");
           return;
       }
 
@@ -822,7 +973,7 @@
       const pendingBosses = routineList.filter(boss => !clearedBosses.has(boss));
 
       if (routineList.length > 0 && pendingBosses.length === 0) {
-          alert("🎉 太棒了！您在這個週期內設定的常規目標已經全部討伐完畢！");
+          showToast("🎉 本週期常規目標已全數完成！", "success");
           bossSelectMaster.clear(true);
           return;
       }
@@ -882,7 +1033,7 @@
           const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
           initMasterSelect(); 
           loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
-      } catch(e) { alert("常規儲存失敗！"); }
+      } catch(e) { showToast("常規儲存失敗！", "danger"); }
   });
 
   document.getElementById("batchModal").addEventListener("show.bs.modal", () => {
@@ -915,8 +1066,14 @@
       }
   });
 
-  document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); alert("登入失敗！請確認瀏覽器沒有阻擋彈出視窗。"); }); });
-  document.getElementById("btn-logout").addEventListener("click", (e) => { e.preventDefault(); if(confirm("確定登出？")) signOut(auth); });
+  document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); showToast("登入失敗！請確認瀏覽器沒阻擋彈出視窗。", "danger"); }); });
+  document.getElementById("btn-logout").addEventListener("click", (e) => { 
+      e.preventDefault(); 
+      showConfirm("登出", "您確定要登出嗎？", [
+          { text: "🚪 確定登出", class: "btn-danger", onClick: () => signOut(auth) },
+          { text: "取消", class: "btn-light", dismiss: true }
+      ]);
+  });
 
   function getWeekBoundaries() {
       const now = getTWNow(); const currentDay = now.getDay(); 
@@ -1007,7 +1164,14 @@
               if(activeChar === charName) { hideOffcanvas(); return; }
               
               if (document.body.classList.contains("edit-mode-active")) {
-                  if(!confirm("您正在編輯模式中，切換角色將會放棄目前的變更。確定要切換嗎？")) return;
+                  showConfirm("切換角色", "您正在編輯模式中，切換角色將會放棄目前的變更。確定要切換嗎？", [
+                      { text: "切換", class: "btn-primary", onClick: () => {
+                          activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
+                          resetMasterForm(); initMasterSelect(); renderSidebar(); loadRecords(); hideOffcanvas();
+                      }},
+                      { text: "取消", class: "btn-light", dismiss: true }
+                  ]);
+                  return;
               }
 
               activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
@@ -1025,10 +1189,14 @@
               if (action === null) return; 
               
               if (action.trim() === "") { 
-                  if (confirm(`確定將【${charName}】從角色清單中移除嗎？`)) { 
-                      let deleteData = confirm(`是否要連同刪除【${charName}】在雲端的所有歷史收益紀錄？\n\n(點擊「確定」將清空該角色數據，點擊「取消」則保留數據但隱藏角色)`);
+                  showConfirm("刪除角色", `確定將【${charName}】從角色清單中移除嗎？`, [
+                      { text: "移除並保留歷史紀錄", class: "btn-warning", onClick: () => processCharDelete(false) },
+                      { text: "移除並清除所有紀錄", class: "btn-danger", onClick: () => processCharDelete(true) },
+                      { text: "取消", class: "btn-light", dismiss: true }
+                  ]);
+
+                  async function processCharDelete(deleteData) {
                       userSettings.characters.splice(index, 1); 
-                      
                       if(deleteData) {
                           try {
                               const q = query(collection(db, "DropRecords"), where("uid_char_key", "==", `${currentUserUid}_${charName}`));
@@ -1037,21 +1205,19 @@
                               qs.forEach(d => batch.delete(doc(db, "DropRecords", d.id)));
                               await batch.commit();
                           } catch(err) {
-                              console.error("刪除角色歷史紀錄失敗", err);
-                              alert("部分雲端數據刪除失敗，請檢查網路狀態。");
+                              showToast("部分雲端數據刪除失敗，請檢查網路狀態", "danger");
                           }
                       }
-
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
                       } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
                       resetMasterForm();
                       saveUserSettings(); renderSidebar(); loadRecords(); 
-                  } 
+                  }
               } else { 
                   const newCharName = action.trim();
                   if(newCharName !== charName) {
-                      if(userSettings.characters.includes(newCharName)) { alert("角色名稱已存在！"); return; }
+                      if(userSettings.characters.includes(newCharName)) { showToast("角色名稱已存在！", "warning"); return; }
                       const oldCharName = charName;
                       userSettings.characters[index] = newCharName; 
                       
@@ -1082,8 +1248,7 @@
                           await saveUserSettings(); 
                           renderSidebar(); loadRecords(); 
                       } catch (err) {
-                          console.error("更新歷史紀錄失敗", err);
-                          alert("資料庫同步失敗，請重試！");
+                          showToast("資料庫同步失敗，請重試！", "danger");
                       }
                   }
               }
@@ -1104,7 +1269,7 @@
               await saveUserSettings(); 
               resetMasterForm();
               renderSidebar(); loadRecords(); hideOffcanvas();
-          } catch(err) { alert("新增角色失敗！"); }
+          } catch(err) { showToast("新增角色失敗！", "danger"); }
       } 
   });
 
@@ -1233,7 +1398,7 @@
 
       } catch (error) { 
           console.error("載入紀錄失敗:", error); 
-          alert("無法連線至資料庫或發生錯誤：\n" + error.message);
+          showToast("無法連線至資料庫，請檢查網路狀態", "danger");
       }
   }
 
@@ -1265,7 +1430,6 @@
       document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`;
   }
 
-  // 💡 渲染常規表與批次管理切換
   function renderRoutineTable(boundaries) {
       const theadRow = document.getElementById("thead-routine-row");
       const tableBody = document.getElementById("table-body-routine");
@@ -1279,7 +1443,6 @@
           return true;
       });
 
-      // 渲染表頭
       theadRow.innerHTML = `
           ${isManageMode.routine ? '<th style="width: 40px;"><input type="checkbox" id="cb-all-routine" class="form-check-input" style="cursor: pointer;"></th>' : ''}
           <th>日期與目標</th>
@@ -1296,17 +1459,17 @@
 
           html += `
               <tr>
-                  ${isManageMode.routine ? `<td><input type="checkbox" class="form-check-input cb-routine-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
-                  <td class="text-start ps-3">
+                  ${isManageMode.routine ? `<td data-label="☑️ 選取"><input type="checkbox" class="form-check-input cb-routine-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
+                  <td class="text-start ps-md-3" data-label="📌 討伐目標">
                       <div class="fw-bold mb-1">${badgeHtml}${data.boss_name}</div>
                       <small class="text-muted fw-normal">${data.date}</small>
                   </td>
-                  <td>
+                  <td data-label="💎 結晶分配">
                       <div class="crystal-text">${(data.crystal_income_billion || 0).toFixed(2)} 億</div>
                       <span class="badge-battle">👥 ${data.total_players}人平分</span>
                   </td>
                   ${isManageMode.routine ? '' : `
-                  <td>
+                  <td data-label="⚙️ 操作">
                       <div class="d-flex flex-column gap-1 justify-content-center">
                           <button class="btn btn-sm btn-outline-primary btn-edit-record action-lock" data-id="${data.id}" data-type="routine">編輯</button>
                           <button class="btn btn-sm btn-outline-danger btn-delete-record action-lock" data-id="${data.id}">刪除</button>
@@ -1332,7 +1495,6 @@
       const b = getWeekBoundaries(); renderRoutineTable(b); updateCharacterStats(b);
   });
 
-  // 💡 渲染寶物表與批次管理切換
   function renderLootTable() {
       const theadRow = document.getElementById("thead-loot-row");
       const tableBody = document.getElementById("table-body-loot");
@@ -1345,7 +1507,6 @@
           return new Date(b.date) - new Date(a.date);
       });
 
-      // 渲染表頭
       theadRow.innerHTML = `
           ${isManageMode.loot ? '<th style="width: 40px;"><input type="checkbox" id="cb-all-loot" class="form-check-input" style="cursor: pointer;"></th>' : ''}
           <th>物品與目標</th>
@@ -1366,18 +1527,18 @@
 
           html += `
               <tr>
-                  ${isManageMode.loot ? `<td><input type="checkbox" class="form-check-input cb-loot-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
-                  <td class="text-start ps-3">
+                  ${isManageMode.loot ? `<td data-label="☑️ 選取"><input type="checkbox" class="form-check-input cb-loot-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
+                  <td class="text-start ps-md-3" data-label="📦 掉落物">
                       <div class="fw-bold text-primary mb-1">📦 ${data.item_name}</div>
                       <small class="text-muted">${badgeHtml}${data.date} | ${data.boss_name}</small>
                   </td>
-                  <td>
+                  <td data-label="💰 帳務">
                       <div class="text-muted" style="font-size:0.85em;">市價: ${(data.item_total_price_billion || 0).toFixed(2)} 億</div>
                       <div class="dividend-text">${dividendLabel}: +${data.status === '自用' ? 0 : (data.my_dividend_billion || 0).toFixed(2)} 億</div>
                   </td>
-                  <td><div class="d-flex flex-column gap-0 align-items-center">${sBadge}${pBadge}</div></td> 
+                  <td data-label="📊 狀態"><div class="d-flex flex-column gap-0 align-items-center">${sBadge}${pBadge}</div></td> 
                   ${isManageMode.loot ? '' : `
-                  <td>
+                  <td data-label="⚙️ 操作">
                       <div class="d-flex flex-column gap-1 justify-content-center">
                           ${settleBtn}
                           <button class="btn btn-sm btn-outline-primary btn-edit-record action-lock" data-id="${data.id}" data-type="loot">編輯</button>
@@ -1400,7 +1561,6 @@
       }
   }
 
-  // 💡 批次管理按鈕事件綁定
   document.getElementById("btn-toggle-manage-routine").addEventListener("click", () => {
       isManageMode.routine = true;
       document.getElementById("btn-toggle-manage-routine").classList.add("d-none");
@@ -1433,53 +1593,56 @@
       renderLootTable();
   });
 
-  // 💡 執行批次刪除邏輯
-  document.getElementById("btn-batch-delete-routine").addEventListener("click", async () => {
+  document.getElementById("btn-batch-delete-routine").addEventListener("click", () => {
       const checkedBoxes = document.querySelectorAll(".cb-routine-item:checked");
-      if(checkedBoxes.length === 0) { alert("請先勾選要刪除的項目！"); return; }
+      if(checkedBoxes.length === 0) { showToast("請先勾選要刪除的項目！", "warning"); return; }
       
-      if(confirm(`確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？\n(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯寶物)`)) {
-          document.getElementById("btn-batch-delete-routine").disabled = true;
-          document.getElementById("btn-batch-delete-routine").innerText = "刪除中...";
-          try {
-              const batch = writeBatch(db);
-              checkedBoxes.forEach(cb => {
-                  batch.delete(doc(db, "DropRecords", cb.value));
-              });
-              await batch.commit();
-              document.getElementById("btn-cancel-manage-routine").click(); // 退出管理模式
-              loadRecords();
-          } catch(e) {
-              alert("批次刪除失敗！");
-          } finally {
-              document.getElementById("btn-batch-delete-routine").disabled = false;
-              document.getElementById("btn-batch-delete-routine").innerText = "刪除選取項目";
-          }
-      }
+      showConfirm("批次刪除", `確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？<br><small class='text-danger'>(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯寶物)</small>`, [
+          { text: "💥 確認刪除", class: "btn-danger", onClick: async () => {
+              document.getElementById("btn-batch-delete-routine").disabled = true;
+              document.getElementById("btn-batch-delete-routine").innerText = "刪除中...";
+              try {
+                  const batch = writeBatch(db);
+                  checkedBoxes.forEach(cb => batch.delete(doc(db, "DropRecords", cb.value)));
+                  await batch.commit();
+                  document.getElementById("btn-cancel-manage-routine").click();
+                  loadRecords();
+                  showToast(`成功刪除 ${checkedBoxes.length} 筆資料`, "success");
+              } catch(e) {
+                  showToast("批次刪除失敗", "danger");
+              } finally {
+                  document.getElementById("btn-batch-delete-routine").disabled = false;
+                  document.getElementById("btn-batch-delete-routine").innerText = "刪除選取項目";
+              }
+          }},
+          { text: "取消", class: "btn-light", dismiss: true }
+      ]);
   });
 
-  document.getElementById("btn-batch-delete-loot").addEventListener("click", async () => {
+  document.getElementById("btn-batch-delete-loot").addEventListener("click", () => {
       const checkedBoxes = document.querySelectorAll(".cb-loot-item:checked");
-      if(checkedBoxes.length === 0) { alert("請先勾選要刪除的項目！"); return; }
+      if(checkedBoxes.length === 0) { showToast("請先勾選要刪除的項目！", "warning"); return; }
       
-      if(confirm(`確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？\n(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯結晶)`)) {
-          document.getElementById("btn-batch-delete-loot").disabled = true;
-          document.getElementById("btn-batch-delete-loot").innerText = "刪除中...";
-          try {
-              const batch = writeBatch(db);
-              checkedBoxes.forEach(cb => {
-                  batch.delete(doc(db, "DropRecords", cb.value));
-              });
-              await batch.commit();
-              document.getElementById("btn-cancel-manage-loot").click(); // 退出管理模式
-              loadRecords();
-          } catch(e) {
-              alert("批次刪除失敗！");
-          } finally {
-              document.getElementById("btn-batch-delete-loot").disabled = false;
-              document.getElementById("btn-batch-delete-loot").innerText = "刪除選取項目";
-          }
-      }
+      showConfirm("批次刪除", `確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？<br><small class='text-danger'>(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯結晶)</small>`, [
+          { text: "💥 確認刪除", class: "btn-danger", onClick: async () => {
+              document.getElementById("btn-batch-delete-loot").disabled = true;
+              document.getElementById("btn-batch-delete-loot").innerText = "刪除中...";
+              try {
+                  const batch = writeBatch(db);
+                  checkedBoxes.forEach(cb => batch.delete(doc(db, "DropRecords", cb.value)));
+                  await batch.commit();
+                  document.getElementById("btn-cancel-manage-loot").click();
+                  loadRecords();
+                  showToast(`成功刪除 ${checkedBoxes.length} 筆資料`, "success");
+              } catch(e) {
+                  showToast("批次刪除失敗", "danger");
+              } finally {
+                  document.getElementById("btn-batch-delete-loot").disabled = false;
+                  document.getElementById("btn-batch-delete-loot").innerText = "刪除選取項目";
+              }
+          }},
+          { text: "取消", class: "btn-light", dismiss: true }
+      ]);
   });
 
   const saveBtnMaster = document.getElementById("btn-save-master");
@@ -1492,7 +1655,7 @@
       const editType = document.getElementById("edit-type-master").value;
       
       let bossesArray = Array.isArray(selectedBosses) ? selectedBosses : (selectedBosses ? [selectedBosses] : []);
-      if (bossesArray.length === 0) { alert("請至少選擇一隻討伐目標！"); return; }
+      if (bossesArray.length === 0) { showToast("請至少選擇一隻討伐目標！", "warning"); return; }
       
       saveBtnMaster.innerText = "處理中..."; saveBtnMaster.disabled = true;
       let promises = [];
@@ -1624,14 +1787,18 @@
           await Promise.all(promises);
 
           if (skippedBosses.length > 0) {
-              alert(`🛡️ 防呆機制啟動：\n以下目標在該週期內已存過結晶，已為您自動排除重複記錄！\n\n${skippedBosses.join("、")}`);
+              showConfirm("防呆機制啟動", `以下目標在該週期內已存過結晶，已為您自動排除重複記錄！<br><br><span class='fw-bold'>${skippedBosses.join("、")}</span>`, [
+                  { text: "了解", class: "btn-primary", dismiss: true }
+              ]);
+          } else {
+              showToast("✅ 結算儲存成功！", "success");
           }
           
           resetMasterForm();
           
       } catch (error) {
           console.error("寫入失敗:", error);
-          alert("資料儲存發生異常，請檢查網路狀態後再試！\n" + error.message);
+          showToast("資料儲存發生異常，請檢查網路狀態", "danger");
           saveBtnMaster.innerText = editId ? "💾 更新紀錄" : "💾 批次儲存結算"; 
           saveBtnMaster.disabled = false;
       } finally {
@@ -1676,8 +1843,9 @@
           try {
               await updateDoc(doc(db, "DropRecords", docId), { payout_status: "已結清", status: "已售出" });
               loadRecords(); 
+              showToast("✅ 帳款已結清", "success");
           } catch (error) { 
-              console.error("結清失敗:", error); alert("結清失敗，請稍後重試！"); 
+              showToast("結清失敗，請稍後重試！", "danger"); 
               btnSettle.innerText = "✅ 結清"; btnSettle.disabled = false; 
           }
           return;
@@ -1689,38 +1857,43 @@
           const record = currentRecordsData.find(x => x.id === docId);
           if (!record) return;
 
-          let deleteBatch = false;
+          let batchCount = record.batch_id ? currentRecordsData.filter(x => x.batch_id === record.batch_id).length : 1;
 
-          if (record.batch_id) {
-              const batchCount = currentRecordsData.filter(x => x.batch_id === record.batch_id).length;
-              if (batchCount > 1) {
-                  if (confirm(`此紀錄隸屬於同一次填寫的批次 (共 ${batchCount} 筆相關資料)。\n\n點擊「確定」將連同該場次的其他掉落物與結晶一併刪除！\n點擊「取消」則只刪除這單一筆紀錄。`)) {
-                      deleteBatch = true;
-                  } else {
-                      if(!confirm("確定只刪除此『單一筆』紀錄嗎？")) return;
-                  }
-              } else {
-                  if(!confirm("確定刪除此紀錄？")) return;
-              }
+          if (batchCount > 1) {
+              showConfirm(
+                  "批次連動刪除", 
+                  `<div class='text-danger mb-2'>⚠️ 此為連動紀錄 (共 ${batchCount} 筆)</div>您要連同關聯的寶物與結晶一併刪除嗎？<br><br><small class='text-muted'>點擊【刪除整批】將清除所有關聯，點擊【僅刪除單筆】則保留其他資料。</small>`, 
+                  [
+                      { text: "💥 刪除整批紀錄", class: "btn-danger", onClick: () => executeDelete(true) },
+                      { text: "🗑️ 僅刪除此單筆", class: "btn-outline-danger", onClick: () => executeDelete(false) },
+                      { text: "取消", class: "btn-light", dismiss: true }
+                  ]
+              );
           } else {
-              if(!confirm("確定刪除此紀錄？")) return;
+              showConfirm("刪除紀錄", "確定要刪除這筆單一紀錄嗎？", [
+                  { text: "確定刪除", class: "btn-danger", onClick: () => executeDelete(false) },
+                  { text: "取消", class: "btn-light", dismiss: true }
+              ]);
           }
 
-          try {
-              btnDel.disabled = true;
-              if (deleteBatch) {
-                  const q = query(collection(db, "DropRecords"), where("batch_id", "==", record.batch_id));
-                  const qs = await getDocs(q);
-                  const batch = writeBatch(db);
-                  qs.forEach(d => batch.delete(doc(db, "DropRecords", d.id)));
-                  await batch.commit();
-              } else {
-                  await deleteDoc(doc(db, "DropRecords", docId)); 
+          async function executeDelete(isBatch) {
+              try {
+                  btnDel.disabled = true;
+                  if (isBatch) {
+                      const q = query(collection(db, "DropRecords"), where("batch_id", "==", record.batch_id));
+                      const qs = await getDocs(q);
+                      const batch = writeBatch(db);
+                      qs.forEach(d => batch.delete(doc(db, "DropRecords", d.id)));
+                      await batch.commit();
+                  } else {
+                      await deleteDoc(doc(db, "DropRecords", docId)); 
+                  }
+                  showToast("✅ 紀錄已刪除", "success");
+                  loadRecords(); 
+              } catch(err) { 
+                  showToast("刪除失敗", "danger");
+                  btnDel.disabled = false;
               }
-              loadRecords(); 
-          } catch(err) { 
-              alert("刪除失敗！"); 
-              btnDel.disabled = false;
           }
           return; 
       }
@@ -1779,7 +1952,7 @@
 
   document.getElementById("btn-copy-line").addEventListener("click", () => {
       let drops = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無" && (d.status === "待售出" || d.payout_status === "未結清"));
-      if(drops.length === 0){ alert("目前沒有未結清的寶物帳務。"); return; }
+      if(drops.length === 0){ showToast("目前沒有未結清的寶物帳務。", "warning"); return; }
       let report = `📦 ${activeChar} 未結清帳務清單 📦\n------------------------\n`;
       drops.forEach(d => {
           let s = d.status === "待售出" ? "⏳ 待售出" : `💰 售價 ${d.item_total_price_billion}億`;
@@ -1787,7 +1960,7 @@
           if (d.teammates && d.teammates.length > 0) report += ` 👉 分錢名單: ${d.teammates.join(", ")}\n`;
           report += `\n`;
       });
-      navigator.clipboard.writeText(report).then(() => alert("✅ 對帳單已複製！"));
+      navigator.clipboard.writeText(report).then(() => showToast("✅ 對帳單已成功複製到剪貼簿！", "success"));
   });
 
 </script>
