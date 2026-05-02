@@ -58,7 +58,6 @@
         .boss-card-header:hover { filter: brightness(1.15); }
         .accordion-icon { display: inline-block; width: 16px; text-align: center; font-size: 0.85em; transition: transform 0.2s; }
         
-        /* 編輯模式鎖定樣式 */
         .edit-mode-active .action-lock { pointer-events: none; opacity: 0.3; filter: grayscale(100%); }
     </style>
 </head>
@@ -413,7 +412,6 @@
   import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-  // 注意：實際部署時請確保 Firebase 的 Firestore Security Rules 有正確設定 uid 讀寫權限
   const firebaseConfig = {
     apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
     authDomain: "maplestoryboss.firebaseapp.com",
@@ -761,7 +759,7 @@
       try {
           await saveUserSettings();
           const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
-          initMasterSelect(); // Re-render to show stars
+          initMasterSelect(); 
           loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
       } catch(e) { alert("常規儲存失敗！"); }
   });
@@ -862,7 +860,6 @@
   function hideOffcanvas() {
       const offcanvasEl = document.getElementById('sidebarMenu');
       if (offcanvasEl.classList.contains('show')) {
-          // 修改1: 改用 getOrCreateInstance 確保收合邏輯不斷連
           const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
           if(bsOffcanvas) bsOffcanvas.hide(); 
       }
@@ -885,8 +882,19 @@
           const textSpan = document.createElement("span"); textSpan.innerText = "⚔️ " + charName; textSpan.style.flexGrow = "1"; 
           
           textSpan.addEventListener("click", (e) => { 
-              e.preventDefault(); activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
-              initMasterSelect(); renderSidebar(); loadRecords(); hideOffcanvas();
+              e.preventDefault(); 
+              if(activeChar === charName) { hideOffcanvas(); return; }
+              
+              if (document.body.classList.contains("edit-mode-active")) {
+                  if(!confirm("您正在編輯模式中，切換角色將會放棄目前的變更。確定要切換嗎？")) return;
+              }
+
+              activeChar = charName; userSettings.lastActiveChar = activeChar; saveUserSettings();
+              resetMasterForm(); // 🚀 關鍵修復：切換角色時強制清空表單殘留的 DOM
+              initMasterSelect(); 
+              renderSidebar(); 
+              loadRecords(); 
+              hideOffcanvas();
           });
           
           const editBtn = document.createElement("span"); editBtn.innerText = "⚙️"; editBtn.style.opacity = "0.7"; editBtn.style.marginLeft = "10px";
@@ -896,7 +904,6 @@
               if (action === null) return; 
               
               if (action.trim() === "") { 
-                  // 修改2: 刪除角色連動刪除歷史數據的雙重確認
                   if (confirm(`確定將【${charName}】從角色清單中移除嗎？`)) { 
                       let deleteData = confirm(`是否要連同刪除【${charName}】在雲端的所有歷史收益紀錄？\n\n(點擊「確定」將清空該角色數據，點擊「取消」則保留數據但隱藏角色)`);
                       userSettings.characters.splice(index, 1); 
@@ -917,6 +924,7 @@
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
                       } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
+                      resetMasterForm();
                       saveUserSettings(); renderSidebar(); loadRecords(); 
                   } 
               } else { 
@@ -925,6 +933,17 @@
                       if(userSettings.characters.includes(newCharName)) { alert("角色名稱已存在！"); return; }
                       const oldCharName = charName;
                       userSettings.characters[index] = newCharName; 
+                      
+                      // 🚀 關鍵修復：舊角色的常規與任務一併繼承到新名字
+                      if (userSettings.routineBosses[oldCharName]) {
+                          userSettings.routineBosses[newCharName] = [...userSettings.routineBosses[oldCharName]];
+                          delete userSettings.routineBosses[oldCharName];
+                      }
+                      if (userSettings.weeklyTasks[oldCharName]) {
+                          userSettings.weeklyTasks[newCharName] = {...userSettings.weeklyTasks[oldCharName]};
+                          delete userSettings.weeklyTasks[oldCharName];
+                      }
+
                       if (activeChar === oldCharName) { activeChar = newCharName; userSettings.lastActiveChar = activeChar; }
                       
                       try {
@@ -959,6 +978,7 @@
           activeChar = charName; userSettings.lastActiveChar = activeChar; 
           try {
               await saveUserSettings(); 
+              resetMasterForm();
               renderSidebar(); loadRecords(); hideOffcanvas();
           } catch(err) { alert("新增角色失敗！"); }
       } 
@@ -997,7 +1017,6 @@
           heatmapGrid.appendChild(cell); currDate.setDate(currDate.getDate() + 1);
       }
       
-      // 修改3: 確保渲染後再滾動
       requestAnimationFrame(() => {
           setTimeout(() => { 
               const container = document.querySelector('.heatmap-container'); 
@@ -1160,7 +1179,6 @@
               </tr>
           `;
       });
-      // 新增 Empty state 提示
       tableBody.innerHTML = html || `<tr><td colspan="3" class="text-muted py-4">此範圍尚無紀錄<br><button class="btn btn-sm btn-outline-primary mt-2 action-lock" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">👉 立即新增紀錄</button></td></tr>`;
   }
   
@@ -1229,7 +1247,6 @@
       let promises = [];
       let skippedBosses = [];
       
-      // 修改4: 新增 Batch ID 追蹤同批紀錄
       const batchId = Date.now().toString();
 
       try {
@@ -1241,7 +1258,6 @@
               
               const originalEditedDoc = currentRecordsData.find(d => d.id === editId);
               const originalDate = originalEditedDoc ? originalEditedDoc.date : recordDate;
-              // 抓出同場次的關聯紀錄進行更新
               const runRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.boss_name === boss && d.date === originalDate && (d.batch_id === originalEditedDoc?.batch_id || !d.batch_id));
               
               runRecords.forEach(runDoc => {
@@ -1383,8 +1399,10 @@
       
       document.getElementById("input-date-master").value = currentSelectedDate || getLocalDateString(getTWNow());
       
-      bossSelectMaster.clear(true); 
-      bossSelectMaster.unlock(); 
+      if (bossSelectMaster) {
+          bossSelectMaster.clear(true); 
+          bossSelectMaster.unlock(); 
+      }
       document.getElementById("dynamic-boss-configs").innerHTML = '';
       
       document.getElementById("global-accordion-controls").classList.add("d-none");
@@ -1396,7 +1414,6 @@
       cancelEditMasterBtn.classList.add("d-none"); 
       saveBtnMaster.disabled = false;
       
-      // 修改5: 退出編輯模式鎖定
       document.body.classList.remove("edit-mode-active");
   }
 
@@ -1423,7 +1440,6 @@
 
           let deleteBatch = false;
 
-          // 修改6: Batch ID 連動刪除邏輯
           if (record.batch_id) {
               const batchCount = currentRecordsData.filter(x => x.batch_id === record.batch_id).length;
               if (batchCount > 1) {
@@ -1464,9 +1480,8 @@
           const d = currentRecordsData.find(x => x.id === docId);
           if (!d) return;
 
-          resetMasterForm(); // 先清空，不代入常規
+          resetMasterForm(); 
           
-          // 進入編輯模式，封鎖其他表格按鈕
           document.body.classList.add("edit-mode-active");
 
           document.getElementById("edit-doc-id-master").value = docId; document.getElementById("edit-type-master").value = type;
