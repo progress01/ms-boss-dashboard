@@ -60,7 +60,6 @@
         
         .edit-mode-active .action-lock { pointer-events: none; opacity: 0.3; filter: grayscale(100%); }
 
-        /* 新增頁籤樣式優化 */
         .nav-pills .nav-link { color: #34495e; border-radius: 8px; margin-right: 8px; padding: 10px 20px; transition: 0.2s; }
         .nav-pills .nav-link:hover { background-color: #f1f2f6; }
         .nav-pills .nav-link.active { background-color: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
@@ -267,21 +266,32 @@
                         
                         <div class="tab-pane fade show active h-100" id="pills-routine" role="tabpanel" aria-labelledby="pills-routine-tab" tabindex="0">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="text-muted small">紀錄您的討伐歷程與結晶收益</span>
-                                <select class="form-select form-select-sm w-auto" id="filter-week-routine">
-                                    <option value="this_week">本週</option>
-                                    <option value="last_week">上週</option>
-                                    <option value="all">近一年</option>
-                                </select>
+                                <div>
+                                    <span class="text-muted small d-block mb-1">紀錄您的討伐歷程與結晶收益</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select form-select-sm w-auto action-lock" id="filter-week-routine">
+                                        <option value="this_week">本週</option>
+                                        <option value="last_week">上週</option>
+                                        <option value="all">近一年</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-routine">☑️ 批次管理</button>
+                                </div>
                             </div>
+                            
+                            <div id="manage-bar-routine" class="d-none bg-danger-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-danger fw-bold small ms-2">🗑️ 批次刪除模式</span>
+                                <div>
+                                    <button class="btn btn-sm btn-danger fw-bold shadow-sm" id="btn-batch-delete-routine">刪除選取項目</button>
+                                    <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-manage-routine">退出管理</button>
+                                </div>
+                            </div>
+
                             <div class="table-responsive tab-table-container">
-                                <table class="table table-hover align-middle text-center">
+                                <table class="table table-hover align-middle text-center" id="table-routine">
                                     <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th>日期與目標</th>
-                                            <th>💎 結晶分配</th>
-                                            <th>操作</th>
-                                        </tr>
+                                        <tr id="thead-routine-row">
+                                            </tr>
                                     </thead>
                                     <tbody id="table-body-routine"></tbody>
                                 </table>
@@ -291,17 +301,25 @@
                         <div class="tab-pane fade h-100" id="pills-loot" role="tabpanel" aria-labelledby="pills-loot-tab" tabindex="0">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-muted small">追蹤待售出物品與未分紅帳款</span>
-                                <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
+                                <div class="d-flex gap-2">
+                                    <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
+                                    <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-loot">☑️ 批次管理</button>
+                                </div>
                             </div>
+
+                            <div id="manage-bar-loot" class="d-none bg-danger-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-danger fw-bold small ms-2">🗑️ 批次刪除模式</span>
+                                <div>
+                                    <button class="btn btn-sm btn-danger fw-bold shadow-sm" id="btn-batch-delete-loot">刪除選取項目</button>
+                                    <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-manage-loot">退出管理</button>
+                                </div>
+                            </div>
+
                             <div class="table-responsive tab-table-container">
-                                <table class="table table-hover align-middle text-center">
+                                <table class="table table-hover align-middle text-center" id="table-loot">
                                     <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th>物品與目標</th>
-                                            <th>市價 / 實收</th>
-                                            <th>狀態</th>
-                                            <th>操作</th>
-                                        </tr>
+                                        <tr id="thead-loot-row">
+                                            </tr>
                                     </thead>
                                     <tbody id="table-body-loot"></tbody>
                                 </table>
@@ -473,6 +491,9 @@
   let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
   let activeChar = ""; 
   let currentRecordsData = [];
+  
+  // 💡 批次管理狀態
+  let isManageMode = { routine: false, loot: false };
 
   const loginScreen = document.getElementById("login-screen");
   const onboardingScreen = document.getElementById("onboarding-screen");
@@ -772,7 +793,6 @@
       if (e.target.classList.contains('btn-remove-loot')) { e.target.closest('.row').remove(); }
   });
 
-  // 💡 【智慧過濾核心】只載入這週期內還沒打的王
   function loadRoutineBosses() {
       if(!bossSelectMaster) return;
       
@@ -1245,7 +1265,9 @@
       document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`;
   }
 
+  // 💡 渲染常規表與批次管理切換
   function renderRoutineTable(boundaries) {
+      const theadRow = document.getElementById("thead-routine-row");
       const tableBody = document.getElementById("table-body-routine");
       const weekFilter = document.getElementById("filter-week-routine").value;
       
@@ -1257,6 +1279,14 @@
           return true;
       });
 
+      // 渲染表頭
+      theadRow.innerHTML = `
+          ${isManageMode.routine ? '<th style="width: 40px;"><input type="checkbox" id="cb-all-routine" class="form-check-input" style="cursor: pointer;"></th>' : ''}
+          <th>日期與目標</th>
+          <th>💎 結晶分配</th>
+          ${isManageMode.routine ? '' : '<th>操作</th>'}
+      `;
+
       let html = "";
       filtered.forEach(data => {
           let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
@@ -1266,6 +1296,7 @@
 
           html += `
               <tr>
+                  ${isManageMode.routine ? `<td><input type="checkbox" class="form-check-input cb-routine-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
                   <td class="text-start ps-3">
                       <div class="fw-bold mb-1">${badgeHtml}${data.boss_name}</div>
                       <small class="text-muted fw-normal">${data.date}</small>
@@ -1274,23 +1305,36 @@
                       <div class="crystal-text">${(data.crystal_income_billion || 0).toFixed(2)} 億</div>
                       <span class="badge-battle">👥 ${data.total_players}人平分</span>
                   </td>
+                  ${isManageMode.routine ? '' : `
                   <td>
                       <div class="d-flex flex-column gap-1 justify-content-center">
                           <button class="btn btn-sm btn-outline-primary btn-edit-record action-lock" data-id="${data.id}" data-type="routine">編輯</button>
                           <button class="btn btn-sm btn-outline-danger btn-delete-record action-lock" data-id="${data.id}">刪除</button>
                       </div>
                   </td>
+                  `}
               </tr>
           `;
       });
-      tableBody.innerHTML = html || `<tr><td colspan="3" class="text-muted py-4">此範圍尚無紀錄<br><button class="btn btn-sm btn-outline-primary mt-2 action-lock" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">👉 立即新增紀錄</button></td></tr>`;
+      tableBody.innerHTML = html || `<tr><td colspan="${isManageMode.routine ? 3 : 3}" class="text-muted py-4">此範圍尚無紀錄<br><button class="btn btn-sm btn-outline-primary mt-2 action-lock" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">👉 立即新增紀錄</button></td></tr>`;
+
+      if (isManageMode.routine) {
+          const cbAll = document.getElementById("cb-all-routine");
+          if(cbAll) {
+              cbAll.addEventListener("change", (e) => {
+                  document.querySelectorAll(".cb-routine-item").forEach(cb => cb.checked = e.target.checked);
+              });
+          }
+      }
   }
   
   document.getElementById("filter-week-routine").addEventListener("change", () => {
       const b = getWeekBoundaries(); renderRoutineTable(b); updateCharacterStats(b);
   });
 
+  // 💡 渲染寶物表與批次管理切換
   function renderLootTable() {
+      const theadRow = document.getElementById("thead-loot-row");
       const tableBody = document.getElementById("table-body-loot");
       let lootRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無");
       
@@ -1300,6 +1344,15 @@
           if(aPending !== bPending) return bPending - aPending; 
           return new Date(b.date) - new Date(a.date);
       });
+
+      // 渲染表頭
+      theadRow.innerHTML = `
+          ${isManageMode.loot ? '<th style="width: 40px;"><input type="checkbox" id="cb-all-loot" class="form-check-input" style="cursor: pointer;"></th>' : ''}
+          <th>物品與目標</th>
+          <th>市價 / 實收</th>
+          <th>狀態</th>
+          ${isManageMode.loot ? '' : '<th>操作</th>'}
+      `;
 
       let html = "";
       lootRecords.forEach(data => {
@@ -1313,6 +1366,7 @@
 
           html += `
               <tr>
+                  ${isManageMode.loot ? `<td><input type="checkbox" class="form-check-input cb-loot-item" value="${data.id}" style="cursor: pointer;"></td>` : ''}
                   <td class="text-start ps-3">
                       <div class="fw-bold text-primary mb-1">📦 ${data.item_name}</div>
                       <small class="text-muted">${badgeHtml}${data.date} | ${data.boss_name}</small>
@@ -1322,6 +1376,7 @@
                       <div class="dividend-text">${dividendLabel}: +${data.status === '自用' ? 0 : (data.my_dividend_billion || 0).toFixed(2)} 億</div>
                   </td>
                   <td><div class="d-flex flex-column gap-0 align-items-center">${sBadge}${pBadge}</div></td> 
+                  ${isManageMode.loot ? '' : `
                   <td>
                       <div class="d-flex flex-column gap-1 justify-content-center">
                           ${settleBtn}
@@ -1329,11 +1384,103 @@
                           <button class="btn btn-sm btn-outline-danger btn-delete-record action-lock" data-id="${data.id}">刪除</button>
                       </div>
                   </td>
+                  `}
               </tr>
           `;
       });
-      tableBody.innerHTML = html || '<tr><td colspan="4" class="text-muted py-4">目前寶物庫空空如也</td></tr>';
+      tableBody.innerHTML = html || `<tr><td colspan="${isManageMode.loot ? 4 : 4}" class="text-muted py-4">目前寶物庫空空如也</td></tr>`;
+
+      if (isManageMode.loot) {
+          const cbAll = document.getElementById("cb-all-loot");
+          if(cbAll) {
+              cbAll.addEventListener("change", (e) => {
+                  document.querySelectorAll(".cb-loot-item").forEach(cb => cb.checked = e.target.checked);
+              });
+          }
+      }
   }
+
+  // 💡 批次管理按鈕事件綁定
+  document.getElementById("btn-toggle-manage-routine").addEventListener("click", () => {
+      isManageMode.routine = true;
+      document.getElementById("btn-toggle-manage-routine").classList.add("d-none");
+      document.getElementById("filter-week-routine").disabled = true;
+      document.getElementById("manage-bar-routine").classList.remove("d-none");
+      renderRoutineTable(getWeekBoundaries());
+  });
+
+  document.getElementById("btn-cancel-manage-routine").addEventListener("click", () => {
+      isManageMode.routine = false;
+      document.getElementById("btn-toggle-manage-routine").classList.remove("d-none");
+      document.getElementById("filter-week-routine").disabled = false;
+      document.getElementById("manage-bar-routine").classList.add("d-none");
+      renderRoutineTable(getWeekBoundaries());
+  });
+
+  document.getElementById("btn-toggle-manage-loot").addEventListener("click", () => {
+      isManageMode.loot = true;
+      document.getElementById("btn-toggle-manage-loot").classList.add("d-none");
+      document.getElementById("btn-copy-line").disabled = true;
+      document.getElementById("manage-bar-loot").classList.remove("d-none");
+      renderLootTable();
+  });
+
+  document.getElementById("btn-cancel-manage-loot").addEventListener("click", () => {
+      isManageMode.loot = false;
+      document.getElementById("btn-toggle-manage-loot").classList.remove("d-none");
+      document.getElementById("btn-copy-line").disabled = false;
+      document.getElementById("manage-bar-loot").classList.add("d-none");
+      renderLootTable();
+  });
+
+  // 💡 執行批次刪除邏輯
+  document.getElementById("btn-batch-delete-routine").addEventListener("click", async () => {
+      const checkedBoxes = document.querySelectorAll(".cb-routine-item:checked");
+      if(checkedBoxes.length === 0) { alert("請先勾選要刪除的項目！"); return; }
+      
+      if(confirm(`確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？\n(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯寶物)`)) {
+          document.getElementById("btn-batch-delete-routine").disabled = true;
+          document.getElementById("btn-batch-delete-routine").innerText = "刪除中...";
+          try {
+              const batch = writeBatch(db);
+              checkedBoxes.forEach(cb => {
+                  batch.delete(doc(db, "DropRecords", cb.value));
+              });
+              await batch.commit();
+              document.getElementById("btn-cancel-manage-routine").click(); // 退出管理模式
+              loadRecords();
+          } catch(e) {
+              alert("批次刪除失敗！");
+          } finally {
+              document.getElementById("btn-batch-delete-routine").disabled = false;
+              document.getElementById("btn-batch-delete-routine").innerText = "刪除選取項目";
+          }
+      }
+  });
+
+  document.getElementById("btn-batch-delete-loot").addEventListener("click", async () => {
+      const checkedBoxes = document.querySelectorAll(".cb-loot-item:checked");
+      if(checkedBoxes.length === 0) { alert("請先勾選要刪除的項目！"); return; }
+      
+      if(confirm(`確定要刪除選取的 ${checkedBoxes.length} 筆紀錄嗎？\n(注意：批次刪除為精準操作，將只會刪除您勾選的項目，不會自動連動刪除關聯結晶)`)) {
+          document.getElementById("btn-batch-delete-loot").disabled = true;
+          document.getElementById("btn-batch-delete-loot").innerText = "刪除中...";
+          try {
+              const batch = writeBatch(db);
+              checkedBoxes.forEach(cb => {
+                  batch.delete(doc(db, "DropRecords", cb.value));
+              });
+              await batch.commit();
+              document.getElementById("btn-cancel-manage-loot").click(); // 退出管理模式
+              loadRecords();
+          } catch(e) {
+              alert("批次刪除失敗！");
+          } finally {
+              document.getElementById("btn-batch-delete-loot").disabled = false;
+              document.getElementById("btn-batch-delete-loot").innerText = "刪除選取項目";
+          }
+      }
+  });
 
   const saveBtnMaster = document.getElementById("btn-save-master");
   const cancelEditMasterBtn = document.getElementById("btn-cancel-edit-master");
@@ -1618,7 +1765,6 @@
                       lastRow.querySelector('.btn-remove-loot').style.display = "none";
                   }
                   
-                  // 切換到表單並滾動
                   const bsTab = new bootstrap.Tab(document.querySelector('#pills-routine-tab'));
                   bsTab.show();
               }
