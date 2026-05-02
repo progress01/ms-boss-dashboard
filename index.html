@@ -132,7 +132,7 @@
 
                 <h6 class="tutorial-step-title">2️⃣ 第二步：日常打王結算 (超快速)</h6>
                 <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
-                    <li><strong>一鍵載入：</strong> 點擊 <span class="tutorial-highlight">⭐ 載入每週常規</span>，系統會<strong class="text-danger">自動過濾掉這週已打過的王</strong>，版面永不凌亂。</li>
+                    <li><strong>自動預載：</strong> 系統會<strong class="text-danger">自動載入這週尚未打完的王</strong>在左側，版面永不凌亂。</li>
                     <li><strong>固定班底：</strong> 填好人數與隊友名字後，點擊卡片內的 <span class="tutorial-highlight">📌 記憶為預設班底</span>，下週自動帶入！(若找代打只需修改名字不點記憶即可)</li>
                     <li><strong>儲存結算：</strong> 點擊最下方的「💾 批次儲存結算」一次完成紀錄！</li>
                 </ul>
@@ -299,7 +299,7 @@
         <div class="row mb-4">
             <div class="col-12 col-lg-5 mb-4">
                 <div class="card card-custom p-4 border-top border-primary border-4 shadow-sm h-100">
-                    <h5 class="mb-4 fw-bold" id="form-title-master">⚔️ 討伐結算中心</h5>
+                    <h5 class="mb-4 fw-bold" id="form-title-master">⚔️ 討伐結算中心 (待辦)</h5>
                     
                     <form id="form-master">
                         <input type="hidden" id="edit-doc-id-master" value="">
@@ -325,7 +325,6 @@
                                         <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 設定每週目標</a>
                                     </span>
                                 </div>
-
                             </div>
                             <select id="input-boss-master" multiple placeholder="搜尋並選擇目標..."></select>
                         </div>
@@ -944,12 +943,13 @@
       if (e.target.classList.contains('btn-remove-loot')) { e.target.closest('.row').remove(); }
   });
 
-  function loadRoutineBosses() {
-      if(!bossSelectMaster) return;
+  // 💡 【智慧過濾核心】只載入這週期內還沒打的王
+  function loadRoutineBosses(isManual = false) {
+      if(!bossSelectMaster || document.body.classList.contains("edit-mode-active")) return;
       
       const routineList = userSettings.routineBosses[activeChar] || [];
       if (routineList.length === 0) {
-          showToast("您尚未設定常規名單，請先點擊「⚙️ 管理」進行設定！", "warning");
+          if (isManual) showToast("您尚未設定常規名單，請先點擊「⚙️ 設定每週目標」進行設定！", "warning");
           return;
       }
 
@@ -973,7 +973,7 @@
       const pendingBosses = routineList.filter(boss => !clearedBosses.has(boss));
 
       if (routineList.length > 0 && pendingBosses.length === 0) {
-          showToast("🎉 本週期常規目標已全數完成！", "success");
+          if (isManual) showToast("🎉 本週期常規目標已全數完成！", "success");
           bossSelectMaster.clear(true);
           return;
       }
@@ -982,7 +982,8 @@
   }
   
   document.getElementById("btn-load-routine-quick").addEventListener("click", (e) => {
-      e.preventDefault(); loadRoutineBosses();
+      e.preventDefault(); 
+      loadRoutineBosses(true);
   });
 
   function renderBossCheckboxes(containerId, checkboxClass, checkedList) {
@@ -1032,7 +1033,9 @@
           await saveUserSettings();
           const bsModal = bootstrap.Modal.getInstance(document.getElementById('routineModal')); if(bsModal) bsModal.hide();
           initMasterSelect(); 
-          loadRoutineBosses(); renderRoutineTable(getWeekBoundaries()); renderLootTable();
+          loadRoutineBosses(false); 
+          renderRoutineTable(getWeekBoundaries()); 
+          renderLootTable();
       } catch(e) { showToast("常規儲存失敗！", "danger"); }
   });
 
@@ -1067,6 +1070,7 @@
   });
 
   document.getElementById("btn-login").addEventListener("click", () => { signInWithPopup(auth, provider).catch(error => { console.error("登入失敗:", error); showToast("登入失敗！請確認瀏覽器沒阻擋彈出視窗。", "danger"); }); });
+  
   document.getElementById("btn-logout").addEventListener("click", (e) => { 
       e.preventDefault(); 
       showConfirm("登出", "您確定要登出嗎？", [
@@ -1205,9 +1209,11 @@
                               qs.forEach(d => batch.delete(doc(db, "DropRecords", d.id)));
                               await batch.commit();
                           } catch(err) {
+                              console.error("刪除角色歷史紀錄失敗", err);
                               showToast("部分雲端數據刪除失敗，請檢查網路狀態", "danger");
                           }
                       }
+
                       if (userSettings.characters.length === 0) {
                           userSettings.lastActiveChar = ""; saveUserSettings(); showScreen('onboarding'); return;
                       } else { activeChar = userSettings.characters[0]; userSettings.lastActiveChar = activeChar; }
@@ -1248,6 +1254,7 @@
                           await saveUserSettings(); 
                           renderSidebar(); loadRecords(); 
                       } catch (err) {
+                          console.error("更新歷史紀錄失敗", err);
                           showToast("資料庫同步失敗，請重試！", "danger");
                       }
                   }
@@ -1395,6 +1402,9 @@
           updateCharacterStats(boundaries);
           renderRoutineTable(boundaries);
           renderLootTable();
+          
+          // 自動預載常規任務 (不會跳出打擾通知)
+          loadRoutineBosses(false);
 
       } catch (error) { 
           console.error("載入紀錄失敗:", error); 
@@ -1826,13 +1836,16 @@
       document.getElementById("global-accordion-controls").classList.add("d-none");
       document.getElementById("global-accordion-controls").classList.remove("d-flex");
       
-      document.getElementById("form-title-master").innerHTML = "⚔️ 討伐結算中心"; 
+      document.getElementById("form-title-master").innerHTML = "⚔️ 討伐結算中心 (待辦)"; 
       saveBtnMaster.innerText = "💾 批次儲存結算"; 
       saveBtnMaster.classList.replace("btn-warning", "btn-primary");
       cancelEditMasterBtn.classList.add("d-none"); 
       saveBtnMaster.disabled = false;
       
       document.body.classList.remove("edit-mode-active");
+
+      // 🔄 重置後自動載入剩餘待辦
+      loadRoutineBosses(false);
   }
 
   document.addEventListener("click", async (e) => {
