@@ -130,7 +130,7 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="background-color: #f8f9fa;">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold">📊 隊友歐氣值分析 (大數據玄學)</h5>
+                <h5 class="modal-title fw-bold">📊 團隊歐氣值分析 (大數據玄學)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3">
@@ -151,17 +151,18 @@
                     <div class="card card-body bg-white border-success shadow-sm" style="font-size: 0.85rem;">
                         <strong class="text-success mb-2 border-bottom pb-1">📊 進階數據量化指標說明：</strong>
                         <ul class="mb-0 ps-3 text-secondary" style="line-height: 1.6;">
-                            <li><strong>歐氣指數：</strong> <code>帶動產值 ÷ 共同出勤場次</code><br>代表該隊友在陣中時，平均每場能創造多少億的收益，是評估隊友「真實幸運值」的核心進階數據。</li>
-                            <li><strong>帶動產值：</strong> 該隊友參與的所有場次中，掉落寶物的市價總和。</li>
-                            <li><strong>打白工率：</strong> <code>無掉寶場次 ÷ 共同出勤場次</code><br>高白工率代表該隊友目前深陷低潮，正處於極端離群值，敬請耐心等待大樣本數下的均值回歸。</li>
+                            <li><strong>歐氣指數：</strong> <code>帶動產值 ÷ 出勤場次</code><br>代表該玩家在陣中時，平均每場能創造多少億的收益，是評估「真實幸運值」的核心進階數據。</li>
+                            <li><strong>帶動產值：</strong> 該玩家參與的所有場次中，掉落寶物的市價總和。</li>
+                            <li><strong>打白工率：</strong> <code>無掉寶場次 ÷ 出勤場次</code><br>高白工率代表該玩家目前深陷低潮，正處於極端離群值，敬請耐心等待大樣本數下的均值回歸。</li>
                         </ul>
                     </div>
                 </div>
+
                 <div id="luck-board-container">
                     </div>
             </div>
             <div class="modal-footer bg-light p-2 justify-content-center">
-                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製隊友名單</button>
+                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製歐氣名單</button>
             </div>
         </div>
     </div>
@@ -261,7 +262,7 @@
 
             <div class="mt-auto d-flex flex-column border-top border-secondary">
                 <a data-bs-toggle="modal" data-bs-target="#tutorialModal" class="sidebar-action text-info bg-dark bg-opacity-25 border-bottom border-secondary">💡 系統快速導覽</a>
-                <a data-bs-toggle="modal" data-bs-target="#luckModal" class="sidebar-action text-success bg-dark bg-opacity-25 border-bottom border-secondary">📊 隊友歐氣值分析</a>
+                <a data-bs-toggle="modal" data-bs-target="#luckModal" class="sidebar-action text-success bg-dark bg-opacity-25 border-bottom border-secondary">📊 團隊歐氣值分析</a>
                 
                 <a id="btn-add-char" class="sidebar-action text-warning">➕ 新增角色</a>
                 <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-primary">⚙️ 設定自訂物品</a>
@@ -1446,7 +1447,7 @@
   document.getElementById("overview-start-date").addEventListener("change", updateAccountOverview);
   document.getElementById("overview-end-date").addEventListener("change", updateAccountOverview);
 
-  // 💡 修改：計算與渲染歐氣值排行榜 (連動右上角時間)
+  // 💡 修改：計算與渲染歐氣值排行榜 (包含自己 + 連動右上角時間)
   function renderLuckBoard() {
       const container = document.getElementById("luck-board-container");
       container.innerHTML = "<div class='text-center text-muted'>正在透過大數據玄學計算中...</div>";
@@ -1465,14 +1466,17 @@
           // ⚠️ 核心過濾機制：依據右上角選擇的區間
           if (rd < range.start || rd > range.end) return;
 
-          // 只算有隊友的場次
-          if (!record.teammates || record.teammates.length === 0) return;
+          // ⚠️ 核心修改：將自己與隊友合併計算
+          let participants = [record.character_name];
+          if (record.teammates && record.teammates.length > 0) {
+              participants = participants.concat(record.teammates);
+          }
 
           let runKey = record.batch_id || `${record.date}_${record.boss_name}`;
           let hasDrop = record.item_name && record.item_name !== "無";
           let dropValue = hasDrop ? (parseFloat(record.item_total_price_billion) || 0) : 0;
 
-          record.teammates.forEach(name => {
+          participants.forEach(name => {
               if (!stats[name]) { stats[name] = { name: name, runs: 0, totalValue: 0, blankRuns: 0 }; }
 
               let teamRunKey = `${name}_${runKey}`;
@@ -1502,7 +1506,7 @@
       leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
       if(leaderboard.length === 0) {
-          container.innerHTML = "<div class='text-center text-muted py-4'>此區間內目前沒有跟隊友出團的紀錄哦！</div>";
+          container.innerHTML = "<div class='text-center text-muted py-4'>此區間內目前沒有出團紀錄哦！</div>";
           return;
       }
 
@@ -1523,11 +1527,14 @@
           }
 
           let rankTrophy = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `<span class="text-muted ms-1 me-2">${index+1}.</span>`));
+          
+          // 若為當前角色，加上 (自己) 標示並改顏色
+          let displayName = p.name === activeChar ? `<span class="text-primary">${p.name} (自己)</span>` : p.name;
 
           html += `
               <div class="p-3 luck-card ${tierClass}">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                      <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${p.name}</h5>
+                      <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${displayName}</h5>
                       <span class="luck-title ${titleClass}">${titleText}</span>
                   </div>
                   <div class="row text-center mt-3">
@@ -1890,7 +1897,7 @@
                               updateData.payout_status = payout;
                           }
                       }
-                      updateData.my_dividend_billion = status === "自用" ? 0 : (price > 0 ? parseFloat((price / partySize).toFixed(2)) : 0);
+                      updateData.my_dividend_billion = status === "自用" ? 0 : (price > 0 ? parseFloat((partySize > 1 ? price / partySize : price).toFixed(2)) : 0);
                   }
                   promises.push(updateDoc(doc(db, "DropRecords", runDoc.id), updateData));
               });
@@ -1905,7 +1912,7 @@
                           userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
                       }
                       let payout = statusVal === "自用" ? "無需分帳" : "未結清";
-                      let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
+                      let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((partySize > 1 ? itemPrice / partySize : itemPrice).toFixed(2)) : 0);
 
                       promises.push(addDoc(collection(db, "DropRecords"), {
                           uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, 
@@ -1959,7 +1966,7 @@
                               userSettings.customItems.push(itemName); saveUserSettings(); renderItemDatalist();
                           }
                           let payout = statusVal === "自用" ? "無需分帳" : "未結清";
-                          let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((itemPrice / partySize).toFixed(2)) : 0);
+                          let dividend = statusVal === "自用" ? 0 : (itemPrice > 0 ? parseFloat((partySize > 1 ? itemPrice / partySize : itemPrice).toFixed(2)) : 0);
 
                           promises.push(addDoc(collection(db, "DropRecords"), {
                               uid: currentUserUid, uid_char_key: `${currentUserUid}_${activeChar}`, character_name: activeChar, batch_id: batchId,
