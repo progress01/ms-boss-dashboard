@@ -1,7 +1,7 @@
 // js/app.js
 import { db, auth, provider, bossCrystalPrices, defaultItemOptions } from './config.js';
 import { fetchUserSettings, saveUserSettingsToDB, fetchRecordsByDateRange } from './api.js';
-import { collection, addDoc, doc, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // === 全域狀態 ===
@@ -211,13 +211,21 @@ async function loadRecords() {
 
         currentRecordsData = await fetchRecordsByDateRange(currentUserUid, getLocalDateString(fetchStart), getLocalDateString(fetchEnd));
         
-        const boundaries = getWeekBoundaries();
+        // 鎖死並同步舊的表格篩選器
+        const localFilter = document.getElementById("filter-week-routine");
+        if(localFilter) {
+            localFilter.disabled = true;
+            localFilter.innerHTML = '<option value="sync">🔄 已與右上角同步</option>';
+        }
+
         updateAccountOverview(); 
         renderHeatmap(currentRecordsData);
-        updateCharacterStats(boundaries);
-        renderRoutineTable(boundaries);
-        renderLootTable();
+        updateCharacterStats(); // 💡 移除了 boundaries 參數，改用全域時間
+        renderRoutineTable();   // 💡 移除了 boundaries 參數，改用全域時間
+        renderLootTable();      // 💡 寶物表也加入全域時間過濾
         loadRoutineBosses(false);
+        renderLuckBoard(); 
+        
     } catch (error) { showToast("無法連線至資料庫", "danger"); }
 }
 
@@ -348,26 +356,28 @@ function updateAccountOverview() {
     document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
 }
 
-function updateCharacterStats(boundaries) {
-    const weekFilter = document.getElementById("filter-week-routine").value;
+// 💡 重大修正：角色數據現在 100% 同步右上角的全域時間
+function updateCharacterStats() {
+    const range = getDashboardDateRange();
+    if (!range) return;
+
     let totalCrystal = 0, totalDivMeso = 0, totalDivTwd = 0, pendingCount = 0, unsettledCount = 0;
 
     currentRecordsData.forEach(data => {
         if (data.character_name !== activeChar) return;
         const rd = new Date(data.date + "T00:00:00");
-        let inDateRange = true;
-        if (weekFilter === "this_week") inDateRange = rd >= boundaries.thisWeekStart;
-        if (weekFilter === "last_week") inDateRange = rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
+        
+        if (rd >= range.start && rd <= range.end) { 
+            totalCrystal += data.crystal_income_billion || 0; 
 
-        if (inDateRange) { totalCrystal += data.crystal_income_billion || 0; }
-
-        if (data.item_name && data.item_name !== "無") {
-            if (data.status !== "自用") {
-                if (data.status === "待售出") pendingCount++;
-                if (data.payout_status === "未結清") unsettledCount++;
-                if (data.payout_status === "已結清") {
-                    if (data.currency === 'twd' && data.my_dividend_twd > 0) totalDivTwd += data.my_dividend_twd;
-                    else if ((!data.currency || data.currency === 'meso') && data.my_dividend_billion > 0) totalDivMeso += data.my_dividend_billion;
+            if (data.item_name && data.item_name !== "無") {
+                if (data.status !== "自用") {
+                    if (data.status === "待售出") pendingCount++;
+                    if (data.payout_status === "未結清") unsettledCount++;
+                    if (data.payout_status === "已結清") {
+                        if (data.currency === 'twd' && data.my_dividend_twd > 0) totalDivTwd += data.my_dividend_twd;
+                        else if ((!data.currency || data.currency === 'meso') && data.my_dividend_billion > 0) totalDivMeso += data.my_dividend_billion;
+                    }
                 }
             }
         }
@@ -380,7 +390,6 @@ function updateCharacterStats(boundaries) {
     document.getElementById("stat-unsettled").innerText = `${unsettledCount} 筆`;
 }
 
-// === 圖表與表格渲染 ===
 function renderHeatmap(records) {
     const heatmapGrid = document.getElementById("heatmap-grid"); 
     if(!heatmapGrid) return;
@@ -416,17 +425,16 @@ function renderHeatmap(records) {
     }
 }
 
-function renderRoutineTable(boundaries) {
+// 💡 重大修正：表格列表現在 100% 同步右上角的全域時間
+function renderRoutineTable() {
     const theadRow = document.getElementById("thead-routine-row");
     const tableBody = document.getElementById("table-body-routine");
-    const weekFilter = document.getElementById("filter-week-routine").value;
+    const range = getDashboardDateRange();
     
     let filtered = currentRecordsData.filter(d => {
         if(d.character_name !== activeChar || d.item_name !== "無") return false;
         const rd = new Date(d.date + "T00:00:00");
-        if (weekFilter === "this_week") return rd >= boundaries.thisWeekStart;
-        if (weekFilter === "last_week") return rd >= boundaries.lastWeekStart && rd < boundaries.thisWeekStart;
-        return true;
+        return rd >= range.start && rd <= range.end;
     });
 
     theadRow.innerHTML = `
@@ -476,7 +484,13 @@ function renderRoutineTable(boundaries) {
 function renderLootTable() {
     const theadRow = document.getElementById("thead-loot-row");
     const tableBody = document.getElementById("table-body-loot");
-    let lootRecords = currentRecordsData.filter(d => d.character_name === activeChar && d.item_name && d.item_name !== "無");
+    const range = getDashboardDateRange();
+
+    let lootRecords = currentRecordsData.filter(d => {
+        if(d.character_name !== activeChar || !d.item_name || d.item_name === "無") return false;
+        const rd = new Date(d.date + "T00:00:00");
+        return rd >= range.start && rd <= range.end;
+    });
     
     lootRecords.sort((a, b) => {
         let aPending = (a.status === "待售出" || a.payout_status === "未結清") ? 1 : 0;
@@ -542,28 +556,24 @@ function renderLootTable() {
 // === 歐氣排行榜渲染 ===
 function renderLuckBoard() {
     const container = document.getElementById("luck-board-container");
-    if(!container) {
-        console.error("找不到 id 為 luck-board-container 的元素！請確認 HTML。");
-        return;
-    }
-    container.innerHTML = "<div class='text-center text-muted py-4'>正在透過大數據玄學計算中...</div>";
-
+    if(!container) return; 
+    
     const range = getDashboardDateRange();
     if(!range) {
         container.innerHTML = "<div class='text-center text-muted py-4'>請先於畫面右上角選擇有效的日期區間！</div>";
         return;
     }
 
-    const startStr = getLocalDateString(range.start);
-    const endStr = getLocalDateString(range.end);
-    const rangeType = document.getElementById("overview-quick-range").value;
-    const timeDisplayEl = document.getElementById('luck-time-display');
-    
-    if (timeDisplayEl) {
+    const alertBox = document.querySelector('#luckModal .alert');
+    if (alertBox) {
+        const startStr = getLocalDateString(range.start);
+        const endStr = getLocalDateString(range.end);
+        const rangeType = document.getElementById("overview-quick-range").value;
+        
         if (rangeType === 'all') {
-            timeDisplayEl.innerText = `分析區間：全部歷史紀錄`;
+            alertBox.innerHTML = `⏱️ <strong>分析區間：全部歷史紀錄</strong> <button type="button" class="btn btn-sm btn-info py-0 px-2 ms-2 text-white" style="font-size: 0.75rem;">算法說明</button>`;
         } else {
-            timeDisplayEl.innerText = `分析區間：${startStr} ~ ${endStr}`;
+            alertBox.innerHTML = `⏱️ <strong>分析區間：${startStr} ~ ${endStr}</strong> <button type="button" class="btn btn-sm btn-info py-0 px-2 ms-2 text-white" style="font-size: 0.75rem;">算法說明</button>`;
         }
     }
 
@@ -645,8 +655,8 @@ function renderLuckBoard() {
     if (N <= 8) {
         for(let i=0; i<N; i++) displayIndices.add(i);
     } else {
-        for(let i=0; i<5; i++) displayIndices.add(i);
-        for(let i=N-3; i<N; i++) displayIndices.add(i);
+        for(let i=0; i<5; i++) displayIndices.add(i); 
+        for(let i=N-3; i<N; i++) displayIndices.add(i); 
         let myIndex = leaderboard.findIndex(p => p.name === myUnifiedName || userSettings.characters.includes(p.name));
         if (myIndex !== -1) displayIndices.add(myIndex);
     }
@@ -669,6 +679,7 @@ function renderLuckBoard() {
         else if (p.luckIndex <= 0.1 && p.blankRate >= 70) { tierClass = "tier-f"; titleClass = "title-f"; titleEmoji = "🌚"; }
 
         let dryBadge = p.currentDryStreak >= 10 ? `<span class="badge bg-danger ms-1">連摃${p.currentDryStreak}</span>` : (p.currentDryStreak >= 5 ? `<span class="badge bg-warning text-dark ms-1">連摃${p.currentDryStreak}</span>` : "");
+        
         let rankNum = actualIndex + 1;
         let rankDisplay = rankNum === 1 ? "🥇" : (rankNum === 2 ? "🥈" : (rankNum === 3 ? "🥉" : `<span class="text-secondary fw-bold" style="display:inline-block; width:20px; text-align:center;">${rankNum}</span>`));
         let isMe = p.name === myUnifiedName || userSettings.characters.includes(p.name);
@@ -868,7 +879,7 @@ document.getElementById("btn-routine-toggle-all").addEventListener("click", () =
 document.getElementById("btn-save-routine-modal").addEventListener("click", async () => {
     let selected = []; document.querySelectorAll(".routine-checkbox:checked").forEach(chk => { selected.push(chk.value); });
     userSettings.routineBosses[activeChar] = selected;
-    try { await saveUserSettings(); bootstrap.Modal.getInstance(document.getElementById('routineModal'))?.hide(); initMasterSelect(); loadRoutineBosses(false); renderRoutineTable(getWeekBoundaries()); renderLootTable(); } catch(e) { showToast("儲存失敗！", "danger"); }
+    try { await saveUserSettings(); bootstrap.Modal.getInstance(document.getElementById('routineModal'))?.hide(); initMasterSelect(); loadRoutineBosses(false); renderRoutineTable(); renderLootTable(); } catch(e) { showToast("儲存失敗！", "danger"); }
 });
 
 document.getElementById("batchModal").addEventListener("show.bs.modal", () => { let currentSelected = bossSelectMaster.getValue(); renderBossCheckboxes("batch-checkbox-container", "batch-checkbox", Array.isArray(currentSelected) ? currentSelected : (currentSelected ? [currentSelected] : [])); });
@@ -1085,8 +1096,8 @@ document.addEventListener("click", async (e) => {
     }
 });
 
-document.getElementById("btn-toggle-manage-routine").addEventListener("click", () => { isManageMode.routine = true; document.getElementById("btn-toggle-manage-routine").classList.add("d-none"); document.getElementById("filter-week-routine").disabled = true; document.getElementById("manage-bar-routine").classList.remove("d-none"); renderRoutineTable(getWeekBoundaries()); });
-document.getElementById("btn-cancel-manage-routine").addEventListener("click", () => { isManageMode.routine = false; document.getElementById("btn-toggle-manage-routine").classList.remove("d-none"); document.getElementById("filter-week-routine").disabled = false; document.getElementById("manage-bar-routine").classList.add("d-none"); renderRoutineTable(getWeekBoundaries()); });
+document.getElementById("btn-toggle-manage-routine").addEventListener("click", () => { isManageMode.routine = true; document.getElementById("btn-toggle-manage-routine").classList.add("d-none"); document.getElementById("manage-bar-routine").classList.remove("d-none"); renderRoutineTable(); });
+document.getElementById("btn-cancel-manage-routine").addEventListener("click", () => { isManageMode.routine = false; document.getElementById("btn-toggle-manage-routine").classList.remove("d-none"); document.getElementById("manage-bar-routine").classList.add("d-none"); renderRoutineTable(); });
 document.getElementById("btn-toggle-manage-loot").addEventListener("click", () => { isManageMode.loot = true; document.getElementById("btn-toggle-manage-loot").classList.add("d-none"); document.getElementById("btn-copy-line").disabled = true; document.getElementById("manage-bar-loot").classList.remove("d-none"); renderLootTable(); });
 document.getElementById("btn-cancel-manage-loot").addEventListener("click", () => { isManageMode.loot = false; document.getElementById("btn-toggle-manage-loot").classList.remove("d-none"); document.getElementById("btn-copy-line").disabled = false; document.getElementById("manage-bar-loot").classList.add("d-none"); renderLootTable(); });
 
