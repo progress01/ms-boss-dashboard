@@ -539,11 +539,11 @@ function renderLootTable() {
     }
 }
 
-// === 歐氣排行榜 ===
+// === 歐氣排行榜渲染 ===
 function renderLuckBoard() {
     const container = document.getElementById("luck-board-container");
     if(!container) return;
-    container.innerHTML = "<div class='text-center text-muted'>正在透過大數據玄學計算中...</div>";
+    container.innerHTML = "<div class='text-center text-muted py-4'>正在透過大數據玄學計算中...</div>";
 
     const range = getDashboardDateRange();
     if(!range) {
@@ -611,69 +611,97 @@ function renderLuckBoard() {
         });
     });
 
-    const MIN_RUNS = 3;
-    
-    let leaderboard = Object.values(stats)
-        // 💡 新增這行：只保留出勤 >= MIN_RUNS 的人，但「本人」絕對保留
-        .filter(player => player.runs >= MIN_RUNS || player.name === myUnifiedName || userSettings.characters.includes(player.name))
-        .map(player => {
-            let equivalentMesoTotal = player.mesoValue + (player.twdValue / exchangeRate);
-            return {
-                ...player,
-                equivalentMesoTotal: equivalentMesoTotal,
-                luckIndex: player.runs > 0 ? (equivalentMesoTotal / player.runs) : 0,
-                blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
-            };
-        });
+    let leaderboard = Object.values(stats).map(player => {
+        let equivalentMesoTotal = player.mesoValue + (player.twdValue / exchangeRate);
+        return {
+            ...player, equivalentMesoTotal: equivalentMesoTotal,
+            luckIndex: player.runs > 0 ? (equivalentMesoTotal / player.runs) : 0,
+            blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
+        };
+    });
 
+    // 依據歐氣指數降序排列
     leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
     if(leaderboard.length === 0) { container.innerHTML = "<div class='text-center text-muted py-4'>此區間內目前沒有出團紀錄哦！</div>"; return; }
 
+    // 💡 實作邏輯：極端值關注 (Top 5, Bottom 3, 以及釘選本人)
+    let displayIndices = new Set();
+    let N = leaderboard.length;
+    if (N <= 8) {
+        for(let i=0; i<N; i++) displayIndices.add(i);
+    } else {
+        for(let i=0; i<5; i++) displayIndices.add(i); // 前 5 名
+        for(let i=N-3; i<N; i++) displayIndices.add(i); // 後 3 名
+        // 找出「本人」的名次並強制加入顯示清單
+        let myIndex = leaderboard.findIndex(p => p.name === myUnifiedName || userSettings.characters.includes(p.name));
+        if (myIndex !== -1) displayIndices.add(myIndex);
+    }
+    
+    // 將索引排序，確保畫面呈現由高到低
+    let sortedIndices = Array.from(displayIndices).sort((a, b) => a - b);
+
     let html = "";
-    leaderboard.forEach((p, index) => {
-        let tierClass = "tier-b"; let titleClass = "title-b"; let titleText = "✨ 穩定發揮中";
-        if (p.luckIndex > 1.5) { tierClass = "tier-s"; titleClass = "title-s"; titleText = "👑 行走的掉寶霸主"; } 
-        else if (p.luckIndex > 0.5) { tierClass = "tier-a"; titleClass = "title-a"; titleText = "🌟 歐洲血統"; } 
-        else if (p.luckIndex <= 0.1 && p.blankRate >= 70) { tierClass = "tier-f"; titleClass = "title-f"; titleText = "🌚 絕望的避雷針"; }
+    let prevIndex = -1;
 
-        let dryBadge = p.currentDryStreak >= 10 ? `<span class="badge bg-danger ms-2">🔴 連摃 ${p.currentDryStreak}</span>` : (p.currentDryStreak >= 5 ? `<span class="badge bg-warning text-dark ms-2">🟡 連摃 ${p.currentDryStreak}</span>` : "");
-        let rankTrophy = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `<span class="text-muted ms-1 me-2">${index+1}.</span>`));
-        let displayName = p.name === myUnifiedName ? `<span class="text-primary fw-bolder">${p.name}</span>` : (userSettings.characters.includes(p.name) ? `<span class="text-info">${p.name} (分身)</span>` : p.name);
+    sortedIndices.forEach((actualIndex) => {
+        // 如果中間有跳過名次，插入「省略分隔線」
+        if (prevIndex !== -1 && actualIndex - prevIndex > 1) {
+            let skippedCount = actualIndex - prevIndex - 1;
+            html += `<div class="text-center text-muted small my-2 py-1 bg-light rounded border" style="font-size: 0.75rem;">... 👻 中間省略 ${skippedCount} 名玩家 ...</div>`;
+        }
+        prevIndex = actualIndex;
 
+        let p = leaderboard[actualIndex];
+        let tierClass = "tier-b"; let titleClass = "title-b"; let titleEmoji = "✨";
+        if (p.luckIndex > 1.5) { tierClass = "tier-s"; titleClass = "title-s"; titleEmoji = "👑"; } 
+        else if (p.luckIndex > 0.5) { tierClass = "tier-a"; titleClass = "title-a"; titleEmoji = "🌟"; } 
+        else if (p.luckIndex <= 0.1 && p.blankRate >= 70) { tierClass = "tier-f"; titleClass = "title-f"; titleEmoji = "🌚"; }
+
+        let dryBadge = p.currentDryStreak >= 10 ? `<span class="badge bg-danger ms-1">連摃${p.currentDryStreak}</span>` : (p.currentDryStreak >= 5 ? `<span class="badge bg-warning text-dark ms-1">連摃${p.currentDryStreak}</span>` : "");
+        
+        // 名次與名稱格式化
+        let rankNum = actualIndex + 1;
+        let rankDisplay = rankNum === 1 ? "🥇" : (rankNum === 2 ? "🥈" : (rankNum === 3 ? "🥉" : `<span class="text-secondary fw-bold" style="display:inline-block; width:20px; text-align:center;">${rankNum}</span>`));
+        let isMe = p.name === myUnifiedName || userSettings.characters.includes(p.name);
+        let displayName = isMe ? `<span class="text-primary fw-bolder">${p.name}</span>` : p.name;
+
+        // 💡 實作邏輯：UI 卡片瘦身 (Compact Accordion Mode)
         html += `
-            <div class="p-3 luck-card ${tierClass}">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="mb-0 fw-bold d-flex align-items-center">${rankTrophy} ${displayName} ${dryBadge}</h5>
-                    <span class="luck-title ${titleClass}">${titleText}</span>
-                </div>
-                <div class="row text-center mt-3">
-                    <div class="col-4">
-                        <div class="small text-muted mb-1" data-bs-toggle="tooltip" data-bs-title="已將台幣與楓幣依上方幣值換算為統一指數">歐氣指數 ℹ️</div>
-                        <div class="fw-bold text-danger fs-5">${p.luckIndex.toFixed(2)}</div>
+            <div class="luck-card ${tierClass} mb-2" style="padding: 0; overflow: hidden;">
+                <div class="d-flex justify-content-between align-items-center p-2" data-bs-toggle="collapse" data-bs-target="#luck-col-${actualIndex}" style="cursor: pointer; user-select: none;">
+                    <div class="text-truncate" style="max-width: 60%; font-size: 0.9rem;">
+                        ${rankDisplay} ${displayName} ${dryBadge}
                     </div>
-                    <div class="col-4 border-start border-end">
-                        <div class="small text-muted mb-1">帶動楓幣</div>
-                        <div class="fw-bold text-success fs-5">${p.mesoValue.toFixed(1)} <small>億</small></div>
-                    </div>
-                    <div class="col-4">
-                        <div class="small text-muted mb-1">帶動台幣</div>
-                        <div class="fw-bold currency-twd fs-5">${p.twdValue.toLocaleString()}<small>元</small></div>
+                    <div class="d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                        <span class="text-secondary">指數: <span class="text-danger fw-bold">${p.luckIndex.toFixed(2)}</span></span>
+                        <span class="luck-title ${titleClass} py-0 px-2" style="font-size: 0.75rem;">${titleEmoji}</span>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-1 text-muted" style="font-size: 0.7em;">
-                    <span>共同出勤: ${p.runs} 場</span>
-                    <span>打白工率: ${p.blankRate}%</span>
+                
+                <div class="collapse ${(actualIndex === 0 || isMe) ? 'show' : ''}" id="luck-col-${actualIndex}">
+                    <div class="p-2 border-top bg-light" style="font-size: 0.85rem;">
+                        <div class="row text-center mb-1">
+                            <div class="col-6 border-end">
+                                <div class="text-muted" style="font-size:0.75rem;">帶動楓幣</div>
+                                <div class="fw-bold text-success">${p.mesoValue.toFixed(1)} 億</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted" style="font-size:0.75rem;">帶動台幣</div>
+                                <div class="fw-bold currency-twd">${p.twdValue.toLocaleString()} 元</div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between px-2 mt-2 pt-1 border-top text-muted" style="font-size: 0.75rem;">
+                            <span>共同出勤: ${p.runs} 場</span>
+                            <span>打白工率: ${p.blankRate}%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
     });
     container.innerHTML = html;
 }
-
-document.getElementById('luckModal').addEventListener('show.bs.modal', renderLuckBoard);
-document.getElementById('luck-merge-chars').addEventListener('change', renderLuckBoard);
-document.getElementById('luck-exchange-rate').addEventListener('input', renderLuckBoard);
 
 // === 設定功能與 TomSelect 表單 ===
 function renderItemDatalist() {
