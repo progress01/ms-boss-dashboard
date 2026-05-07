@@ -611,14 +611,20 @@ function renderLuckBoard() {
         });
     });
 
-    let leaderboard = Object.values(stats).map(player => {
-        let equivalentMesoTotal = player.mesoValue + (player.twdValue / exchangeRate);
-        return {
-            ...player, equivalentMesoTotal: equivalentMesoTotal,
-            luckIndex: player.runs > 0 ? (equivalentMesoTotal / player.runs) : 0,
-            blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
-        };
-    });
+    const MIN_RUNS = 3;
+    
+    let leaderboard = Object.values(stats)
+        // 💡 新增這行：只保留出勤 >= MIN_RUNS 的人，但「本人」絕對保留
+        .filter(player => player.runs >= MIN_RUNS || player.name === myUnifiedName || userSettings.characters.includes(player.name))
+        .map(player => {
+            let equivalentMesoTotal = player.mesoValue + (player.twdValue / exchangeRate);
+            return {
+                ...player,
+                equivalentMesoTotal: equivalentMesoTotal,
+                luckIndex: player.runs > 0 ? (equivalentMesoTotal / player.runs) : 0,
+                blankRate: player.runs > 0 ? Math.round((player.blankRuns / player.runs) * 100) : 0
+            };
+        });
 
     leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
