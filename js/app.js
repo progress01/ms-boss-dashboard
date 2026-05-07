@@ -1,7 +1,7 @@
 // js/app.js
 import { db, auth, provider, bossCrystalPrices, defaultItemOptions } from './config.js';
 import { fetchUserSettings, saveUserSettingsToDB, fetchRecordsByDateRange } from './api.js';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, doc, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // === 全域狀態 ===
@@ -542,7 +542,10 @@ function renderLootTable() {
 // === 歐氣排行榜渲染 ===
 function renderLuckBoard() {
     const container = document.getElementById("luck-board-container");
-    if(!container) return;
+    if(!container) {
+        console.error("找不到 id 為 luck-board-container 的元素！請確認 HTML。");
+        return;
+    }
     container.innerHTML = "<div class='text-center text-muted py-4'>正在透過大數據玄學計算中...</div>";
 
     const range = getDashboardDateRange();
@@ -551,11 +554,10 @@ function renderLuckBoard() {
         return;
     }
 
-    // 💡 新增：動態抓取右上角的真實時間，並顯示在歐氣面板上
     const startStr = getLocalDateString(range.start);
     const endStr = getLocalDateString(range.end);
     const rangeType = document.getElementById("overview-quick-range").value;
-    const timeDisplayEl = document.querySelector('#luckModal .alert strong');
+    const timeDisplayEl = document.getElementById('luck-time-display');
     
     if (timeDisplayEl) {
         if (rangeType === 'all') {
@@ -634,32 +636,26 @@ function renderLuckBoard() {
         };
     });
 
-    // 依據歐氣指數降序排列
     leaderboard.sort((a, b) => b.luckIndex - a.luckIndex);
 
     if(leaderboard.length === 0) { container.innerHTML = "<div class='text-center text-muted py-4'>此區間內目前沒有出團紀錄哦！</div>"; return; }
 
-    // 💡 實作邏輯：極端值關注 (Top 5, Bottom 3, 以及釘選本人)
     let displayIndices = new Set();
     let N = leaderboard.length;
     if (N <= 8) {
         for(let i=0; i<N; i++) displayIndices.add(i);
     } else {
-        for(let i=0; i<5; i++) displayIndices.add(i); // 前 5 名
-        for(let i=N-3; i<N; i++) displayIndices.add(i); // 後 3 名
-        // 找出「本人」的名次並強制加入顯示清單
+        for(let i=0; i<5; i++) displayIndices.add(i);
+        for(let i=N-3; i<N; i++) displayIndices.add(i);
         let myIndex = leaderboard.findIndex(p => p.name === myUnifiedName || userSettings.characters.includes(p.name));
         if (myIndex !== -1) displayIndices.add(myIndex);
     }
     
-    // 將索引排序，確保畫面呈現由高到低
     let sortedIndices = Array.from(displayIndices).sort((a, b) => a - b);
-
     let html = "";
     let prevIndex = -1;
 
     sortedIndices.forEach((actualIndex) => {
-        // 如果中間有跳過名次，插入「省略分隔線」
         if (prevIndex !== -1 && actualIndex - prevIndex > 1) {
             let skippedCount = actualIndex - prevIndex - 1;
             html += `<div class="text-center text-muted small my-2 py-1 bg-light rounded border" style="font-size: 0.75rem;">... 👻 中間省略 ${skippedCount} 名玩家 ...</div>`;
@@ -673,16 +669,13 @@ function renderLuckBoard() {
         else if (p.luckIndex <= 0.1 && p.blankRate >= 70) { tierClass = "tier-f"; titleClass = "title-f"; titleEmoji = "🌚"; }
 
         let dryBadge = p.currentDryStreak >= 10 ? `<span class="badge bg-danger ms-1">連摃${p.currentDryStreak}</span>` : (p.currentDryStreak >= 5 ? `<span class="badge bg-warning text-dark ms-1">連摃${p.currentDryStreak}</span>` : "");
-        
-        // 名次與名稱格式化
         let rankNum = actualIndex + 1;
         let rankDisplay = rankNum === 1 ? "🥇" : (rankNum === 2 ? "🥈" : (rankNum === 3 ? "🥉" : `<span class="text-secondary fw-bold" style="display:inline-block; width:20px; text-align:center;">${rankNum}</span>`));
         let isMe = p.name === myUnifiedName || userSettings.characters.includes(p.name);
         let displayName = isMe ? `<span class="text-primary fw-bolder">${p.name}</span>` : p.name;
 
-        // UI 卡片瘦身 (Compact Accordion Mode)
         html += `
-            <div class="luck-card ${tierClass} mb-2" style="padding: 0; overflow: hidden;">
+            <div class="luck-card ${tierClass} mb-2" style="padding: 0; overflow: hidden; border: 1px solid #dee2e6; border-radius: 8px;">
                 <div class="d-flex justify-content-between align-items-center p-2" data-bs-toggle="collapse" data-bs-target="#luck-col-${actualIndex}" style="cursor: pointer; user-select: none;">
                     <div class="text-truncate" style="max-width: 60%; font-size: 0.9rem;">
                         ${rankDisplay} ${displayName} ${dryBadge}
@@ -716,6 +709,10 @@ function renderLuckBoard() {
     });
     container.innerHTML = html;
 }
+
+document.getElementById('luckModal').addEventListener('show.bs.modal', renderLuckBoard);
+document.getElementById('luck-merge-chars').addEventListener('change', renderLuckBoard);
+document.getElementById('luck-exchange-rate').addEventListener('input', renderLuckBoard);
 
 // === 設定功能與 TomSelect 表單 ===
 function renderItemDatalist() {
