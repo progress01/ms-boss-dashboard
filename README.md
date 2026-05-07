@@ -8,8 +8,9 @@
 * **身分驗證與資料隔離**：整合 Firebase OAuth 2.0 (Google 登入)，確保每位使用者的資料各自獨立且安全。
 * **自動化收益結算**：內建 V273 版本最新 Boss 結晶石基礎價格，可依據「同行隊友」人數自動分攤計算個人結晶收益。
 * **帳款追蹤與自訂掉寶**：支援自訂專屬追蹤物品，並提供「待售出物品」與「未結清帳款」的狀態管理與對帳單輸出。
-* **GA 模式動態儀表板**：
+* **GA 模式動態儀表板與大數據分析**：
   * **帳號總覽**：支援比照 Google Analytics 的時間維度篩選（本週、上週、本月、自訂區間），精準結算全帳號的區間總收益。
+  * **團隊綜合歐氣排行榜**：內建掉寶價值換算演算法，統一將台幣/楓幣產值量化為「歐氣指數」，客觀追蹤團隊成員的掉寶貢獻與連摃狀態。
   * **掉寶歐洲度熱力圖**：自動追蹤近 16 週的掉寶頻率，以視覺化網格呈現 RNG 狀態。
 * **低耦合第三方傳送門**：無縫整合外部裝備查詢 API (Misaka)，自動帶入當前角色名稱進行外部查詢。
 
@@ -34,19 +35,28 @@
 
 ## 🔹 系統架構與後台機制
 
-專案採用 **BaaS (Backend as a Service)** 架構，前端畫面由 GitHub Pages 進行靜態代管，後端身分驗證與資料庫則由 Google Firebase 提供服務。
+專案採用 **BaaS (Backend as a Service)** 架構，前端畫面由 GitHub Pages 進行靜態代管，後端身分驗證與資料庫則由 Google Firebase 提供服務。為應對長期數據增長，系統採用高度模組化與按需讀取設計。
 
-### 1. 嚴格的 UI 狀態機 (State Machine)
+### 1. 模組化目錄結構 (Code Splitting)
+系統採用 ES6 Modules 進行職責分離，提升程式碼可維護性：
+* `index.html`：純粹的 UI 骨架與視圖層。
+* `css/style.css`：集中管理客製化介面樣式。
+* `js/config.js`：Firebase 初始化與靜態常數 (如 Boss 價格表)。
+* `js/api.js`：專責處理 Firestore 資料庫的 CRUD 操作與快取邏輯。
+* `js/app.js`：核心業務邏輯、狀態管理與 DOM 渲染。
+
+### 2. 嚴格的 UI 狀態機 (State Machine)
 系統捨棄了依賴裝置的 `localStorage`，全面改用雲端狀態同步。藉由嚴格的路由管控，將介面拆分為三個互斥狀態，徹底消滅「無角色卻進入儀表板」的幽靈狀態：
 * **狀態 A (Login)**：未登入驗證。
 * **狀態 B (Onboarding)**：已登入但檢測無角色資料，強制攔截建立。
 * **狀態 C (Dashboard)**：確保 `activeChar` 存在，渲染專屬儀表板。
 
-### 2. 單一真理來源 (Single Source of Truth) 與向後相容
-所有的設定包含角色清單 (`characters`)、最後活躍角色 (`lastActiveChar`)、自訂物品 (`customItems`) 與每週任務進度，皆統一存放於 Firestore 的 `UserSettings` 集合。系統內建**無痛升級 (Silent Migration)** 機制，舊用戶登入時將自動補齊缺失的雲端狀態欄位，不影響既有體驗。
+### 3. 按需讀取 (Lazy Loading) 與智慧快取
+* **設定檔快取**：使用者的靜態設定（角色清單、自訂物品）在登入時建立記憶體快取，避免頻繁切換角色造成的重複讀取。
+* **動態區間查詢**：捨棄一次性載入全量歷史資料，改由 `api.js` 根據目前 UI 選擇的「時間維度」向 Firestore 請求特定區間資料，大幅降低資料庫讀取成本 (Reads) 與前端渲染負擔。
 
-### 3. 資料庫安全規則 (Firestore Security Rules)
-為防止未經授權的存取，Firestore 後台配置了嚴格的安全規則。所有的讀寫操作皆需經過雲端雙重核驗，確保使用者僅能存取與其 `uid` 相符的 `UserSettings` 與 `DropRecords` 文件。
+### 4. 資料庫安全規則 (Firestore Security Rules)
+為防止未經授權的存取，Firestore 後台配置了嚴格的安全規則。所有的讀寫操作皆需經過雲端雙重核驗，確保使用者僅能存取與其 `uid` 相符的數據。
 
 **安全規則配置範例：**
 ```javascript
@@ -65,18 +75,3 @@ service cloud.firestore {
     }
   }
 }
-```
-
-### 4. 複合鍵 (Composite Key) 與低耦合設計
-* **資料檢索**：寫入紀錄時，系統自動組合 UID 與角色名稱（`uid_char_key: "UID_角色"`），避免頻繁建立 Firestore 複合索引，實現高效率的 `where` 單一欄位過濾。
-* **外部 API 整合**：採用「傳送門 (Portal)」模式取代後端 Fetch。透過 `encodeURIComponent` 動態生成查詢 URL 並新開視窗，既免除了 CORS 與 Rate Limit 的系統風險，又達成了功能擴充的目的。
-
----
-
-## 🔹 開發與部署指南
-
-1. 複製本專案的 `index.html`。
-2. 於 Firebase Console 建立新專案，並啟用 **Authentication (Google 供應商)** 與 **Firestore Database**。
-3. 將 Firestore 的 Rules 更新為上述的安全規則。
-4. 將 `index.html` 內的 `firebaseConfig` 替換為您的環境變數。
-5. 將檔案推送至 GitHub Repository，並透過 GitHub Pages 發布，即可完成部署。
