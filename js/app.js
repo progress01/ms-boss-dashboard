@@ -551,6 +551,20 @@ function renderLuckBoard() {
         return;
     }
 
+    // 💡 新增：動態抓取右上角的真實時間，並顯示在歐氣面板上
+    const startStr = getLocalDateString(range.start);
+    const endStr = getLocalDateString(range.end);
+    const rangeType = document.getElementById("overview-quick-range").value;
+    const timeDisplayEl = document.querySelector('#luckModal .alert strong');
+    
+    if (timeDisplayEl) {
+        if (rangeType === 'all') {
+            timeDisplayEl.innerText = `分析區間：全部歷史紀錄`;
+        } else {
+            timeDisplayEl.innerText = `分析區間：${startStr} ~ ${endStr}`;
+        }
+    }
+
     let stats = {}; 
     let processedRuns = new Set(); 
     const myUnifiedName = "👤 本人 (全帳號總和)";
@@ -666,7 +680,7 @@ function renderLuckBoard() {
         let isMe = p.name === myUnifiedName || userSettings.characters.includes(p.name);
         let displayName = isMe ? `<span class="text-primary fw-bolder">${p.name}</span>` : p.name;
 
-        // 💡 實作邏輯：UI 卡片瘦身 (Compact Accordion Mode)
+        // UI 卡片瘦身 (Compact Accordion Mode)
         html += `
             <div class="luck-card ${tierClass} mb-2" style="padding: 0; overflow: hidden;">
                 <div class="d-flex justify-content-between align-items-center p-2" data-bs-toggle="collapse" data-bs-target="#luck-col-${actualIndex}" style="cursor: pointer; user-select: none;">
