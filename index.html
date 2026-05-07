@@ -6,13 +6,541 @@
     <title>楓之谷收益管理系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    
     <!-- 引入外部 CSS -->
     <link href="./css/style.css" rel="stylesheet">
 </head>
 <body>
 
-<!-- ... (保留原本 HTML <body> 內的所有 UI 元素，包含 Toast, Modals, #login-screen, #onboarding-screen, #main-app 等結構，為節省版面此處省略，請完整複製你原有的 HTML 結構) ... -->
-<!-- 注意：不要漏掉隱藏的 <datalist> 和 <div id="hidden-boss-options"> -->
+<!-- 系統推播 Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+    <div id="liveToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body fw-bold text-white fs-6 w-100" id="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- 動態確認 Modal -->
+<div class="modal fade" id="dynamicConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-body text-center p-4">
+                <h5 class="fw-bold mb-3 text-dark" id="dc-title">確認操作</h5>
+                <p class="text-muted mb-4" id="dc-message" style="font-size: 0.95em;"></p>
+                <div class="d-flex flex-column gap-2" id="dc-buttons"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 團隊歐氣值分析 Modal -->
+<div class="modal fade" id="luckModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background-color: #f8f9fa;">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">📊 團隊綜合歐氣值分析</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                
+                <div class="alert alert-success py-2 px-3 mb-2 d-flex justify-content-between align-items-center" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size: 1.2rem;">⏱️</span>
+                        <div>
+                            <strong class="d-block small">分析區間：已與右上角同步</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success fw-bold py-0" type="button" data-bs-toggle="collapse" data-bs-target="#luckFormulaInfo" style="font-size: 0.8rem;">
+                        ℹ️ 算法說明
+                    </button>
+                </div>
+                
+                <div class="collapse mb-3" id="luckFormulaInfo">
+                    <div class="card card-body bg-white border-success shadow-sm" style="font-size: 0.85rem;">
+                        <strong class="text-success mb-2 border-bottom pb-1">📊 進階數據量化指標說明：</strong>
+                        <ul class="mb-0 ps-3 text-secondary" style="line-height: 1.6;">
+                            <li><strong>綜合歐氣指數：</strong> <code>等值總產值 ÷ 出勤場次</code><br>系統會依據下方設定的「預估幣值」，將台幣產值換算回等值楓幣，統一計算最真實的排位積分！</li>
+                            <li><strong>等值總產值：</strong> 帶動楓幣 + (帶動台幣 ÷ 預估幣值)。</li>
+                            <li><strong>目前連摃：</strong> <code>台幣、楓幣掉寶</code>皆會中斷連摃。高連摃者代表近期運氣處於壓縮狀態。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1 border-bottom pb-2">
+                    <div class="d-flex align-items-center gap-1" data-bs-toggle="tooltip" data-bs-title="這將決定台幣掉寶在排行榜上的積分權重">
+                        <span class="text-secondary fw-bold small">💱 幣值 1 億=</span>
+                        <input type="number" id="luck-exchange-rate" class="form-control form-control-sm text-center fw-bold text-warning p-1" style="width: 50px;" value="6" step="0.1">
+                        <span class="text-secondary fw-bold small">元</span>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="luck-merge-chars" checked style="cursor: pointer;">
+                        <label class="form-check-label small fw-bold text-secondary" for="luck-merge-chars" style="cursor: pointer;">帳號歸戶</label>
+                    </div>
+                </div>
+
+                <div id="luck-board-container">
+                    </div>
+            </div>
+            <div class="modal-footer bg-light p-2 justify-content-center">
+                <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製歐氣名單</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 系統教學 Modal -->
+<div class="modal fade" id="tutorialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">📖 系統快速上手指南</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">歡迎使用專屬的收益與帳務管理系統！為了讓你結算每週收益、分紅不再頭痛，請參考以下核心功能：</p>
+                
+                <h6 class="tutorial-step-title">1️⃣ 第一步：建立角色與設定常規</h6>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>新增角色：</strong> 左側選單的「➕ 新增角色」可管理多隻分身。</li>
+                    <li><strong>設定常規：</strong> 點擊結算區的 <span class="tutorial-highlight">⚙️ 設定每週目標</span>，把必打的王打勾並儲存為模板。</li>
+                </ul>
+
+                <h6 class="tutorial-step-title">2️⃣ 第二步：日常打王結算 (超快速)</h6>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>自動預載：</strong> 系統會自動載入這週尚未打完的王。</li>
+                    <li><strong>雙幣結算：</strong> 填寫掉落物時，可切換該物品是賣「億(楓幣)」還是「元(台幣)」，系統會自動分開記帳！</li>
+                    <li><strong>分批紀錄：</strong> 若這次只打部分，請點搜尋框標籤旁的 <span class="text-danger fw-bold">「✖」</span> 移除，剩餘的王會留到下次載入。</li>
+                    <li><strong>儲存結算：</strong> 點擊「💾 批次儲存結算」一次完成紀錄！</li>
+                </ul>
+
+                <h6 class="tutorial-step-title">3️⃣ 第三步：帳務與分錢管理</h6>
+                <p class="mb-1 text-secondary" style="font-size: 0.9em;">右側版面分為兩個獨立頁籤：</p>
+                <ul class="mb-0 text-secondary" style="font-size: 0.9em;">
+                    <li><strong>📜 結晶明細：</strong> 對帳這週哪隻王還沒清。</li>
+                    <li><strong>📦 寶物庫：</strong> 拍賣/群組東西賣掉後，來這裡點擊「✅ 結清」。</li>
+                    <li><strong>複製對帳：</strong> 點擊 <span class="tutorial-highlight">📋 複製對帳單</span>，自動產出含分錢名單與台幣/楓幣的文字。</li>
+                </ul>
+
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">我知道了！開始結算 🚀</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 登入畫面 -->
+<div id="login-screen" class="container-fluid" style="height: 100vh; background-color: #1a252f; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+    <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
+    <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
+    <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" class="me-2" alt="Google"> 使用 Google 帳號登入
+    </button>
+</div>
+
+<!-- 初次建立角色畫面 -->
+<div id="onboarding-screen" class="container-fluid" style="display: none; height: 100vh; background-color: #1a252f; flex-direction: column; justify-content: center; align-items: center;">
+    <div class="card p-5 shadow-lg" style="max-width: 450px; width: 90%; border-radius: 16px; border: none;">
+        <h3 class="text-center mb-3 fw-bold text-dark">👋 歡迎來到收益系統</h3>
+        <p class="text-muted text-center mb-4">系統偵測到您尚未建立任何角色。<br>請先輸入您的主要角色名稱，以啟用專屬儀表板。</p>
+        <input type="text" id="input-first-char" class="form-control form-control-lg mb-4 text-center" placeholder="例如：煞氣X重砲" autocomplete="off">
+        <button id="btn-start-journey" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">🚀 建立並進入系統</button>
+    </div>
+</div>
+
+<!-- 系統主體 -->
+<div id="main-app" style="display: none;">
+    
+    <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center sticky-top shadow-sm z-3">
+        <h5 class="mb-0 fw-bold" id="mobile-active-char">載入中...</h5>
+        <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
+            ☰ 選單
+        </button>
+    </div>
+
+    <div class="offcanvas-md offcanvas-start sidebar d-flex flex-column" tabindex="-1" id="sidebarMenu" style="background-color: #1a252f; color: white;">
+        <div class="offcanvas-header d-md-none border-bottom border-secondary">
+            <h5 class="offcanvas-title fw-bold text-white">收益管理</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" id="mobile-close-btn"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0 flex-grow-1">
+            <h5 class="text-center mt-4 mb-3 text-white d-none d-md-block fw-bold">收益管理系統</h5>
+            <div id="character-list"></div>
+            
+            <div class="sidebar-module mt-3">
+                <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✅ 本週保底進度</h6>
+                <div id="weekly-tasks-container"></div>
+            </div>
+
+            <div class="sidebar-module mt-2 mb-4">
+                <h6 class="text-secondary fw-bold mb-2" style="font-size: 0.8rem;">✨ 掉寶歐洲度 (近16週)</h6>
+                <div class="heatmap-container">
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                </div>
+            </div>
+
+            <div class="mt-auto d-flex flex-column border-top border-secondary">
+                <a data-bs-toggle="modal" data-bs-target="#tutorialModal" class="sidebar-action text-info bg-dark bg-opacity-25 border-bottom border-secondary">💡 系統快速導覽</a>
+                <a data-bs-toggle="modal" data-bs-target="#luckModal" class="sidebar-action text-success bg-dark bg-opacity-25 border-bottom border-secondary">📊 團隊歐氣值分析</a>
+                
+                <a id="btn-add-char" class="sidebar-action text-warning">➕ 新增角色</a>
+                <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-primary">⚙️ 設定自訂物品</a>
+                <a id="btn-logout" class="sidebar-action text-danger">🚪 登出 (<span id="user-name"></span>)</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content p-4">
+        
+        <div class="card card-custom bg-white p-3 mb-3 shadow-sm border-0 border-start border-5 border-dark">
+            <div class="row align-items-center mb-3 border-bottom pb-3">
+                <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <h5 class="fw-bold mb-0">🌐 帳號總覽 <span class="text-muted fs-6">Account Overview</span></h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <select id="overview-quick-range" class="form-select form-select-sm w-auto shadow-sm">
+                            <option value="this_week">本週週期 (四~三)</option>
+                            <option value="last_week">上週週期</option>
+                            <option value="this_month">本月</option>
+                            <option value="all">累計全部(近一年)</option>
+                            <option value="custom">自訂區間...</option>
+                        </select>
+                        <input type="date" id="overview-start-date" class="form-control form-control-sm w-auto d-none shadow-sm">
+                        <span id="overview-date-separator" class="d-none text-muted">~</span>
+                        <input type="date" id="overview-end-date" class="form-control form-control-sm w-auto d-none shadow-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-secondary">週王重置：<span id="reset-timer-week"></span></span>
+                        <span class="badge bg-dark">黑魔重置：<span id="reset-timer-month"></span></span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="text-muted" style="font-size:0.85rem;">區間內總結晶收益</div>
+                    <h4 class="crystal-text mb-0" id="account-total-crystal">0 億</h4>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted" style="font-size:0.85rem;">區間內已結清分紅 (楓幣/台幣)</div>
+                    <h4 class="mb-0 fw-bold">
+                        <span class="text-success" id="account-total-settled">0 億</span>
+                        <small class="text-secondary fs-6"> / <span class="currency-twd" id="account-total-settled-twd">0 元</span></small>
+                    </h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+            <h3 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                <span id="dashboard-title">載入中...</span> 
+                <span data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="前往外部網站查詢此角色的裝備與素質">
+                    <a id="btn-char-portal" href="#" target="_blank" class="btn btn-sm btn-outline-info d-none" style="border-radius: 20px;">
+                        🔍 查裝備
+                    </a>
+                </span>
+                <span class="fs-5 text-muted d-none d-md-inline">收益管理</span>
+            </h3>
+            <span class="badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill" id="weekly-limit-badge">
+                📊 本週打卡：<span id="weekly-limit-count">0</span> / 12 隻
+            </span>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-6 col-md-3 stat-card-wrapper">
+                <div class="card card-custom p-3 bg-white border-start border-primary border-4">
+                    <h6 class="text-muted">💎 結晶石總計</h6>
+                    <h3 class="crystal-text" id="stat-crystal">0 億</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 stat-card-wrapper">
+                <div class="card card-custom p-3 bg-white border-start border-success border-4">
+                    <h6 class="text-muted">✨ 已結清分紅</h6>
+                    <h3 class="dividend-text"><span id="stat-drop">0 億</span><br><small class="currency-twd fs-6"><span id="stat-drop-twd">0</span> 元</small></h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 stat-card-wrapper">
+                <div class="card card-custom p-3 bg-white border-start border-warning border-4">
+                    <h6 class="text-muted">⏳ 待售出物品</h6>
+                    <h3 class="text-warning" id="stat-pending">0 件</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 stat-card-wrapper">
+                <div class="card card-custom p-3 bg-white border-start border-danger border-4">
+                    <h6 class="text-muted">🤝 待結算帳款</h6>
+                    <h3 class="text-danger" id="stat-unsettled">0 筆</h3>
+                </div>
+            </div>
+        </div>
+
+        <datalist id="item-datalist"></datalist>
+
+        <div class="row mb-4">
+            <div class="col-12 col-lg-5 mb-4">
+                <div class="card card-custom p-4 border-top border-primary border-4 shadow-sm h-100">
+                    <h5 class="mb-4 fw-bold" id="form-title-master">⚔️ 討伐結算中心 (待辦)</h5>
+                    
+                    <form id="form-master">
+                        <input type="hidden" id="edit-doc-id-master" value="">
+                        <input type="hidden" id="edit-type-master" value="">
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-secondary fw-bold">討伐日期</label>
+                            <input type="date" class="form-control" id="input-date-master">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-end mb-1 flex-wrap gap-2">
+                                <label class="form-label text-secondary fw-bold mb-0">本次討伐目標 <small class="text-muted">(可多選)</small></label>
+                                
+                                <div class="d-flex gap-3">
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="一鍵帶入本週還沒打的『常規名單』">
+                                        <a href="#" id="btn-load-routine-quick" class="text-decoration-none text-warning fw-bold" style="font-size: 0.85rem;">⭐ 載入每週常規</a>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="打非常規的王？從難度清單快速打勾帶入">
+                                        <a href="#" class="text-decoration-none text-success fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#batchModal">☑️ 批次勾選臨時</a>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="編輯這隻角色每週/每月必打的王">
+                                        <a href="#" id="btn-manage-routine" class="text-decoration-none text-primary fw-bold" style="font-size: 0.85rem;" data-bs-toggle="modal" data-bs-target="#routineModal">⚙️ 設定每週目標</a>
+                                    </span>
+                                </div>
+                            </div>
+                            <select id="input-boss-master" multiple placeholder="搜尋並選擇目標..."></select>
+                        </div>
+
+                        <div id="global-accordion-controls" class="d-none justify-content-end gap-2 mb-2 mt-2 border-bottom pb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" id="btn-expand-all">⏬ 全部展開</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" id="btn-collapse-all">⏫ 全部收合</button>
+                        </div>
+
+                        <div id="dynamic-boss-configs" class="mt-2"></div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="將畫面上所有設定好的王與寶物存入紀錄區" class="w-100">
+                                <button type="button" class="btn btn-primary w-100 py-3 fs-5 fw-bold shadow-sm" id="btn-save-master">💾 批次儲存結算</button>
+                            </span>
+                            <button type="button" class="btn btn-outline-secondary py-3 d-none" id="btn-cancel-edit-master">取消編輯</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+                <div class="card card-custom p-4 shadow-sm h-100">
+                    
+                    <ul class="nav nav-pills mb-3 border-bottom pb-3" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold" id="pills-routine-tab" data-bs-toggle="pill" data-bs-target="#pills-routine" type="button" role="tab" aria-controls="pills-routine" aria-selected="true">
+                                📜 結晶與討伐明細
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="pills-loot-tab" data-bs-toggle="pill" data-bs-target="#pills-loot" type="button" role="tab" aria-controls="pills-loot" aria-selected="false">
+                                📦 寶物與未結清帳務
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content flex-grow-1" id="pills-tabContent">
+                        
+                        <!-- 結晶與討伐明細 Tab -->
+                        <div class="tab-pane fade show active h-100" id="pills-routine" role="tabpanel" aria-labelledby="pills-routine-tab" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <span class="text-muted small d-block mb-1">紀錄您的討伐歷程與結晶收益</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select form-select-sm w-auto action-lock" id="filter-week-routine">
+                                        <option value="this_week">本週</option>
+                                        <option value="last_week">上週</option>
+                                        <option value="all">近一年</option>
+                                    </select>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="進入表格勾選模式，可一次刪除多筆錯誤紀錄">
+                                        <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-routine">☑️ 批次管理</button>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div id="manage-bar-routine" class="d-none bg-danger-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-danger fw-bold small ms-2">🗑️ 批次刪除模式</span>
+                                <div>
+                                    <button class="btn btn-sm btn-danger fw-bold shadow-sm" id="btn-batch-delete-routine">刪除選取項目</button>
+                                    <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-manage-routine">退出管理</button>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive tab-table-container">
+                                <table class="table table-hover align-middle text-center" id="table-routine">
+                                    <thead class="table-light sticky-top">
+                                        <tr id="thead-routine-row">
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-routine"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 寶物與未結清帳務 Tab -->
+                        <div class="tab-pane fade h-100" id="pills-loot" role="tabpanel" aria-labelledby="pills-loot-tab" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted small">追蹤待售出物品與未分紅帳款</span>
+                                <div class="d-flex gap-2">
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="一鍵複製所有『待售出/未結清』的寶物清單，方便貼到 Line 算帳">
+                                        <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
+                                    </span>
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="進入表格勾選模式，可一次刪除多筆錯誤紀錄">
+                                        <button class="btn btn-sm btn-outline-danger action-lock" id="btn-toggle-manage-loot">☑️ 批次管理</button>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="manage-bar-loot" class="d-none bg-danger-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-danger fw-bold small ms-2">🗑️ 批次刪除模式</span>
+                                <div>
+                                    <button class="btn btn-sm btn-danger fw-bold shadow-sm" id="btn-batch-delete-loot">刪除選取項目</button>
+                                    <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-manage-loot">退出管理</button>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive tab-table-container">
+                                <table class="table table-hover align-middle text-center" id="table-loot">
+                                    <thead class="table-light sticky-top">
+                                        <tr id="thead-loot-row">
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-loot"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 隱藏的 Boss 清單資料庫 -->
+<div class="d-none" id="hidden-boss-options">
+    <optgroup label="Extreme / Ultimate (終極/極限)">
+        <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
+        <option value="終極瑪麗西亞">終極瑪麗西亞 [極瑪] (15億)</option>
+        <option value="終極咖凌">終極咖凌 [極咖] (14.43億)</option>
+        <option value="終極最初的敵對者">終極最初的敵對者 (13.44億)</option>
+        <option value="終極監視者卡洛斯">終極監視者卡洛斯 [極狗] (12.37億)</option>
+        <option value="終極受選的賽蓮">終極受選的賽蓮 [極賽] (7.24億)</option>
+        <option value="終極史烏">終極史烏 [極史] (3.24億)</option>
+    </optgroup>
+    <optgroup label="Hard / Chaos (困難/混沌)">
+        <option value="困難黑魔法師">困難黑魔法師 [困黑] (9.91億)</option>
+        <option value="困難巴德利斯">困難巴德利斯 (8.4億)</option>
+        <option value="困難林波">困難林波 [困林波] (7.49億)</option>
+        <option value="困難咖凌">困難咖凌 [困咖] (7.21億)</option>
+        <option value="困難最初的敵對者">困難最初的敵對者 [困敵對者] (6.82億)</option>
+        <option value="混沌監視者卡洛斯">混沌監視者卡洛斯 [困狗] (6.19億)</option>
+        <option value="困難受選的賽蓮">困難受選的賽蓮 [困賽] (2.72億)</option>
+        <option value="困難真希拉">困難真希拉 [困真] (1.45億)</option>
+        <option value="困難威爾">困難威爾 [困威] (1.27億)</option>
+        <option value="混沌守護天使綠水靈">混沌守護天使綠水靈 [困綠] (1.26億)</option>
+        <option value="困難頓凱爾">困難頓凱爾 [困頓] (1.26億)</option>
+        <option value="混沌戴斯克">混沌戴斯克 [困眼] (1.11億)</option>
+        <option value="困難露希妲">困難露希妲 [困露] (1.02億)</option>
+        <option value="困難史烏">困難史烏 [困史] (0.92億)</option>
+        <option value="困難戴米安">困難戴米安 [困戴] (0.86億)</option>
+    </optgroup>
+    <optgroup label="Normal / Easy (普通/簡單)">
+        <option value="普通史烏">普通史烏 [普史] (0.41億)</option>
+        <option value="普通戴米安">普通戴米安 [普戴] (0.42億)</option>
+        <option value="普通露希妲">普通露希妲 [普露] (0.47億)</option>
+        <option value="普通威爾">普通威爾 [普威] (0.54億)</option>
+        <option value="普通守護天使綠水靈">普通守護天使綠水靈 [普綠] (0.54億)</option>
+        <option value="普通戴斯克">普通戴斯克 [普眼] (0.57億)</option>
+        <option value="普通頓凱爾">普通頓凱爾 [普頓] (0.60億)</option>
+        <option value="普通真希拉">普通真希拉 [普真] (0.89億)</option>
+        
+        <option value="普通受選的賽蓮">普通受選的賽蓮 [普賽] (1.50億)</option>
+        <option value="普通瑪麗西亞">普通瑪麗西亞 [普瑪] (1.50億)</option>
+        <option value="普通監視者卡洛斯">普通監視者卡洛斯 [普狗] (3.09億)</option>
+        <option value="普通巴德利斯">普通巴德利斯 (5.6億)</option>
+        
+        <option value="普通咖凌">普通咖凌 [普咖] (3.51億)</option>
+        <option value="普通林波">普通林波 [普林] (3.75億)</option>
+
+        <option value="簡單露希妲">簡單露希妲 [簡露] (0.51億)</option>
+        <option value="簡單威爾">簡單威爾 [簡威] (0.55億)</option>
+        <option value="簡單監視者卡洛斯">簡單監視者卡洛斯 [簡狗] (1.50億)</option>
+        <option value="簡單咖凌">簡單咖凌 [簡咖] (1.75億)</option>
+    </optgroup>
+</div>
+
+<!-- 系統與物品設定 Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">⚙️ 系統與物品設定</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <h6 class="fw-bold mb-3">📦 管理自訂追蹤物品</h6>
+        <div class="input-group mb-3">
+          <input type="text" id="input-custom-item" class="form-control" placeholder="輸入物品名稱">
+          <button class="btn btn-primary" id="btn-add-custom-item">加入</button>
+        </div>
+        <ul class="list-group" id="custom-item-list"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 設定每週目標 Modal -->
+<div class="modal fade" id="routineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold">⚙️ 設定每週目標</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light" id="routine-checkbox-container"></div>
+      <div class="modal-footer d-flex justify-content-between">
+        <div>
+            <span class="text-muted d-block" style="font-size: 0.85em;">勾選的王將成為每週點擊「⭐ 載入常規」的預設清單。</span>
+            <button class="btn btn-sm btn-outline-secondary mt-1" id="btn-routine-toggle-all">全選 / 全不選</button>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary fw-bold px-4" id="btn-save-routine-modal">💾 儲存為常規模板</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批次勾選臨時目標 Modal -->
+<div class="modal fade" id="batchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold">☑️ 批次勾選臨時目標</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light" id="batch-checkbox-container"></div>
+      <div class="modal-footer d-flex justify-content-between">
+        <div>
+            <span class="text-muted d-block" style="font-size: 0.85em;">此操作僅將打勾的王帶入目前表單，適合清低階王或幫打。</span>
+            <button class="btn btn-sm btn-outline-secondary mt-1" id="btn-batch-toggle-all">全選 / 全不選</button>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-success fw-bold px-4" id="btn-confirm-batch-modal">✅ 確認帶入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
