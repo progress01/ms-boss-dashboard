@@ -168,7 +168,6 @@ async function loadUserSettings() {
         if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
         if(!userSettings.bossTemplates) userSettings.bossTemplates = {}; 
         
-        // 預設常見簡稱字典初始化
         if(!userSettings.bossAliases) {
             userSettings.bossAliases = {
                 "困狗": "混沌監視者卡洛斯", "極狗": "終極監視者卡洛斯",
@@ -1122,7 +1121,7 @@ document.addEventListener("click", async (e) => {
                 }
                 new bootstrap.Tab(document.querySelector('#pills-routine-tab')).show();
             }
-            document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊庫)"; 
+            document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊伍)"; 
             saveBtnMaster.innerText = "💾 更新紀錄"; saveBtnMaster.classList.replace("btn-primary", "btn-warning"); cancelEditMasterBtn.classList.remove("d-none");
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -1135,7 +1134,7 @@ document.getElementById("btn-cancel-manage-routine").addEventListener("click", (
 document.getElementById("btn-toggle-manage-loot").addEventListener("click", () => { isManageMode.loot = true; document.getElementById("btn-toggle-manage-loot").classList.add("d-none"); document.getElementById("btn-copy-line").disabled = true; document.getElementById("manage-bar-loot").classList.remove("d-none"); renderLootTable(); });
 document.getElementById("btn-cancel-manage-loot").addEventListener("click", () => { isManageMode.loot = false; document.getElementById("btn-toggle-manage-loot").classList.remove("d-none"); document.getElementById("btn-copy-line").disabled = false; document.getElementById("manage-bar-loot").classList.add("d-none"); renderLootTable(); });
 
-// 新增功能：清單快速記帳按鈕綁定
+// === 新增功能：清單快速記帳按鈕綁定 ===
 document.getElementById("btn-toggle-list-edit")?.addEventListener("click", () => {
     isManageMode.listEdit = true;
     document.getElementById("btn-toggle-list-edit").classList.add("d-none");
@@ -1235,14 +1234,68 @@ document.getElementById("btn-copy-line").addEventListener("click", () => {
 // ==========================================
 let notepadParsedData = [];
 
-window.openAliasSettings = function() {
-    const aliasKey = prompt("➕ 新增/修改簡稱字典：\n請輸入【簡稱】 (例如：困威)");
-    if (!aliasKey || !aliasKey.trim()) return;
-    const aliasValue = prompt(`請輸入【${aliasKey}】對應的【完整 Boss 名稱】\n(必須與系統選單完全一致，例如：困難威爾)`);
-    if (!aliasValue || !aliasValue.trim()) return;
+document.getElementById('aliasSettingsModal')?.addEventListener('show.bs.modal', () => {
+    const select = document.getElementById("select-alias-value");
+    if (select.options.length <= 1) { 
+        const optionsHtml = document.getElementById("hidden-boss-options").innerHTML;
+        select.innerHTML += optionsHtml;
+    }
+    renderAliasList();
+});
+
+function renderAliasList() {
+    const container = document.getElementById("alias-list-container");
+    container.innerHTML = "";
     
-    userSettings.bossAliases[aliasKey.trim()] = aliasValue.trim();
-    saveUserSettings().then(() => showToast(`✅ 簡稱 [${aliasKey}] -> [${aliasValue}] 已儲存！`, "success"));
+    const aliases = userSettings.bossAliases || {};
+    const keys = Object.keys(aliases);
+    
+    if (keys.length === 0) {
+        container.innerHTML = `<li class="list-group-item text-muted text-center py-3">目前沒有任何簡稱設定</li>`;
+        return;
+    }
+    
+    keys.forEach(key => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `
+            <div>
+                <span class="badge bg-primary fs-6 me-2">${key}</span> 
+                <span class="text-muted">➔</span> 
+                <span class="fw-bold ms-2">${aliases[key]}</span>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteAlias('${key}')">刪除</button>
+        `;
+        container.appendChild(li);
+    });
+}
+
+document.getElementById("btn-add-alias")?.addEventListener("click", () => {
+    const keyInput = document.getElementById("input-alias-key");
+    const valSelect = document.getElementById("select-alias-value");
+    
+    const key = keyInput.value.trim();
+    const val = valSelect.value;
+    
+    if (!key) { showToast("請輸入簡稱！", "warning"); return; }
+    if (!val) { showToast("請選擇對應的官方名稱！", "warning"); return; }
+    
+    userSettings.bossAliases[key] = val;
+    saveUserSettings().then(() => {
+        showToast("✅ 簡稱對應已儲存！", "success");
+        keyInput.value = "";
+        valSelect.value = "";
+        renderAliasList();
+    });
+});
+
+window.deleteAlias = function(key) {
+    if (userSettings.bossAliases[key]) {
+        delete userSettings.bossAliases[key];
+        saveUserSettings().then(() => {
+            renderAliasList();
+        });
+    }
 };
 
 document.getElementById("btn-analyze-notepad")?.addEventListener("click", () => {
