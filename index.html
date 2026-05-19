@@ -206,11 +206,53 @@
   </div>
 </div>
 
+<div class="modal fade" id="loginIntroModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold">✨ 操作說明</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light px-4 py-4">
+        <p class="text-muted mb-4 small">這是一個收益追蹤工具，希望能幫助維持每週打王後的掉寶快樂！</p>
+        
+        <ul class="list-group list-group-flush shadow-sm mb-3 rounded">
+          <li class="list-group-item bg-white py-3">
+            <h6 class="fw-bold text-primary mb-1">🎯 雙幣值智慧分帳</h6>
+            <span class="small text-muted">自動依據人數平分「台幣」與「楓幣」產值，不怕算錯錢。</span>
+          </li>
+          <li class="list-group-item bg-white py-3">
+            <h6 class="fw-bold text-success mb-1">📝 智慧記事本匯入</h6>
+            <span class="small text-muted">直接貼上平常記在記事本的純文字，自動預測解析成表單(參考範例感謝昌哥貢獻)。</span>
+          </li>
+          <li class="list-group-item bg-white py-3">
+            <h6 class="fw-bold text-warning mb-1">⚡ 快速記帳模式</h6>
+            <span class="small text-muted">像 Excel 一樣直接在清單上填寫售價、更改狀態，一鍵批次儲存。</span>
+          </li>
+          <li class="list-group-item bg-white py-3">
+            <h6 class="fw-bold text-danger mb-1">📊 團隊歐氣值分析</h6>
+            <span class="small text-muted">自動追蹤隊友們的掉寶率、連摃次數與帶動產值。</span>
+          </li>
+        </ul>
+        <p class="text-secondary small text-center mb-0 mt-4">🔒 本系統透過 Firebase 安全驗證，資料僅綁定您的 Google 帳號。</p>
+      </div>
+      <div class="modal-footer justify-content-center bg-light border-top-0">
+        <button type="button" class="btn btn-info text-white fw-bold px-5 rounded-pill" data-bs-dismiss="modal">我知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="login-screen" class="container-fluid" style="height: 100vh; background-color: #1a252f; display: flex; flex-direction: column; justify-content: center; align-items: center;">
     <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
     <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
-    <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill">
+    
+    <button id="btn-login" class="btn btn-light btn-lg px-5 py-3 fs-5 shadow-lg rounded-pill mb-4">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" class="me-2" alt="Google"> 使用 Google 帳號登入
+    </button>
+    
+    <button type="button" class="btn btn-outline-info rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#loginIntroModal">
+        ✨ 了解系統操作
     </button>
 </div>
 
