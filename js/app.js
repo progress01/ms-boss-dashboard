@@ -526,16 +526,16 @@ function renderLootTable() {
                         <div class="fw-bold text-secondary mb-1">📦 ${data.item_name}</div>
                         <small class="text-muted">${data.date} | ${data.boss_name}</small>
                     </td>
-                    <td>
+                    <td style="width: 40%; min-width: 140px;">
                         <div class="input-group input-group-sm border-success rounded">
                             <input type="number" class="form-control list-edit-price" value="${priceVal}" step="0.1">
-                            <select class="form-select text-center fw-bold list-edit-currency" style="max-width: 65px;">
+                            <select class="form-select text-center fw-bold list-edit-currency flex-shrink-0" style="width: 65px; flex-basis: 65px;">
                                 <option value="meso" ${!isTwd ? 'selected' : ''}>億</option>
                                 <option value="twd" ${isTwd ? 'selected' : ''} class="text-warning">元</option>
                             </select>
                         </div>
                     </td>
-                    <td style="width: 25%;">
+                    <td style="width: 25%; min-width: 100px;">
                         <select class="form-select form-select-sm border-success list-edit-status">
                             <option value="待售出" ${data.status === '待售出' ? 'selected' : ''}>⏳ 待售出</option>
                             <option value="已售出" ${data.status === '已售出' ? 'selected' : ''}>✔️ 已售出</option>
