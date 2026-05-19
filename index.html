@@ -7,12 +7,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
     
-    <!-- 引入外部 CSS -->
     <link href="./css/style.css" rel="stylesheet">
 </head>
 <body>
 
-<!-- 系統推播 Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
     <div id="liveToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
@@ -22,7 +20,6 @@
     </div>
 </div>
 
-<!-- 動態確認 Modal -->
 <div class="modal fade" id="dynamicConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
@@ -35,7 +32,6 @@
     </div>
 </div>
 
-<!-- 團隊歐氣值分析 Modal -->
 <div class="modal fade" id="luckModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="background-color: #f8f9fa;">
@@ -80,8 +76,7 @@
                     </div>
                 </div>
 
-                <div id="luck-board-container">
-                    </div>
+                <div id="luck-board-container"></div>
             </div>
             <div class="modal-footer bg-light p-2 justify-content-center">
                 <button type="button" class="btn btn-outline-success fw-bold" onclick="navigator.clipboard.writeText(Array.from(document.querySelectorAll('.luck-card h5')).map(h=>h.innerText).join('\n')).then(()=>showToast('名單已複製', 'success'))">📋 複製歐氣名單</button>
@@ -90,7 +85,6 @@
     </div>
 </div>
 
-<!-- 系統教學 Modal -->
 <div class="modal fade" id="tutorialModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
@@ -131,7 +125,57 @@
     </div>
 </div>
 
-<!-- 登入畫面 -->
+<div class="modal fade" id="smartNotepadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">📝 智慧預測記事本 (批次匯入)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="row">
+          
+          <div class="col-md-4 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0">1. 貼上你的筆記</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="openAliasSettings()">⚙️ 編輯簡稱字典</button>
+            </div>
+            <p class="small text-muted mb-2">每行一筆，系統會盡力解析：<br>日期 角色 Boss(可簡稱) 物品 隊友</p>
+            <textarea id="notepad-input" class="form-control mb-3 shadow-sm" rows="12" placeholder="例：3/7 弓之意志 困狗 研磨石(IV)"></textarea>
+            <button id="btn-analyze-notepad" class="btn btn-warning w-100 fw-bold shadow-sm">✨ 進行智慧預測</button>
+          </div>
+
+          <div class="col-md-8 mt-3 mt-md-0">
+            <h6 class="fw-bold mb-2">2. 審核與修正清單</h6>
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-bordered align-middle text-center bg-white shadow-sm">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th style="width: 15%">日期</th>
+                    <th style="width: 20%">角色</th>
+                    <th style="width: 25%">Boss (需吻合系統)</th>
+                    <th style="width: 25%">掉落物</th>
+                    <th style="width: 15%">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="notepad-audit-body">
+                  <tr><td colspan="5" class="text-muted py-4">等待預測...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="text-danger small fw-bold me-auto d-none" id="audit-warning">⚠️ 還有紅色警告欄位未修正，請確認！</span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-success fw-bold px-4" id="btn-commit-notepad" disabled>💾 確認並寫入資料庫</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="login-screen" class="container-fluid" style="height: 100vh; background-color: #1a252f; display: flex; flex-direction: column; justify-content: center; align-items: center;">
     <h2 class="text-white mb-4 text-center">楓之谷收益管理系統</h2>
     <p class="text-secondary mb-5 text-center">請登入以存取您的專屬收益紀錄庫</p>
@@ -140,7 +184,6 @@
     </button>
 </div>
 
-<!-- 初次建立角色畫面 -->
 <div id="onboarding-screen" class="container-fluid" style="display: none; height: 100vh; background-color: #1a252f; flex-direction: column; justify-content: center; align-items: center;">
     <div class="card p-5 shadow-lg" style="max-width: 450px; width: 90%; border-radius: 16px; border: none;">
         <h3 class="text-center mb-3 fw-bold text-dark">👋 歡迎來到收益系統</h3>
@@ -150,7 +193,6 @@
     </div>
 </div>
 
-<!-- 系統主體 -->
 <div id="main-app" style="display: none;">
     
     <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center sticky-top shadow-sm z-3">
@@ -187,6 +229,8 @@
                 
                 <a id="btn-add-char" class="sidebar-action text-warning">➕ 新增角色</a>
                 <a data-bs-toggle="modal" data-bs-target="#settingsModal" class="sidebar-action text-primary">⚙️ 設定自訂物品</a>
+                <a data-bs-toggle="modal" data-bs-target="#smartNotepadModal" class="sidebar-action text-info bg-dark bg-opacity-25 border-top border-bottom border-secondary">📝 智慧記事本匯入</a>
+                
                 <a id="btn-logout" class="sidebar-action text-danger">🚪 登出 (<span id="user-name"></span>)</a>
             </div>
         </div>
@@ -345,7 +389,6 @@
 
                     <div class="tab-content flex-grow-1" id="pills-tabContent">
                         
-                        <!-- 結晶與討伐明細 Tab -->
                         <div class="tab-pane fade show active h-100" id="pills-routine" role="tabpanel" aria-labelledby="pills-routine-tab" tabindex="0">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
@@ -382,11 +425,13 @@
                             </div>
                         </div>
 
-                        <!-- 寶物與未結清帳務 Tab -->
                         <div class="tab-pane fade h-100" id="pills-loot" role="tabpanel" aria-labelledby="pills-loot-tab" tabindex="0">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-muted small">追蹤待售出物品與未分紅帳款</span>
                                 <div class="d-flex gap-2">
+                                    <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="像 Excel 一樣快速填寫售價與狀態">
+                                        <button id="btn-toggle-list-edit" class="btn btn-sm btn-outline-success action-lock">✏️ 快速記帳</button>
+                                    </span>
                                     <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="一鍵複製所有『待售出/未結清』的寶物清單，方便貼到 Line 算帳">
                                         <button id="btn-copy-line" class="btn btn-sm btn-outline-primary action-lock">📋 複製對帳單</button>
                                     </span>
@@ -401,6 +446,14 @@
                                 <div>
                                     <button class="btn btn-sm btn-danger fw-bold shadow-sm" id="btn-batch-delete-loot">刪除選取項目</button>
                                     <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-manage-loot">退出管理</button>
+                                </div>
+                            </div>
+
+                            <div id="manage-bar-list-edit" class="d-none bg-success-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center shadow-sm">
+                                <span class="text-success fw-bold small ms-2">✏️ 快速記帳模式 (僅開放帳務欄位)</span>
+                                <div>
+                                    <button class="btn btn-sm btn-success fw-bold shadow-sm" id="btn-save-list-edit">💾 儲存變更</button>
+                                    <button class="btn btn-sm btn-secondary shadow-sm" id="btn-cancel-list-edit">取消</button>
                                 </div>
                             </div>
 
@@ -423,7 +476,6 @@
     </div>
 </div>
 
-<!-- 隱藏的 Boss 清單資料庫 -->
 <div class="d-none" id="hidden-boss-options">
     <optgroup label="Extreme / Ultimate (終極/極限)">
         <option value="終極黑魔法師">終極黑魔法師 [極黑] (30億)</option>
@@ -476,7 +528,6 @@
     </optgroup>
 </div>
 
-<!-- 系統與物品設定 Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -496,7 +547,6 @@
   </div>
 </div>
 
-<!-- 設定每週目標 Modal -->
 <div class="modal fade" id="routineModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -519,7 +569,6 @@
   </div>
 </div>
 
-<!-- 批次勾選臨時目標 Modal -->
 <div class="modal fade" id="batchModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -545,7 +594,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
-<!-- 引入模組化主程式 -->
 <script type="module" src="./js/app.js"></script>
 </body>
 </html>
