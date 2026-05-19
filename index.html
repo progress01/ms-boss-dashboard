@@ -138,7 +138,7 @@
           <div class="col-md-4 border-end">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0">1. 貼上你的筆記</h6>
-                <button class="btn btn-sm btn-outline-secondary" onclick="openAliasSettings()">⚙️ 編輯簡稱字典</button>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#aliasSettingsModal">⚙️ 編輯簡稱字典</button>
             </div>
             <p class="small text-muted mb-2">每行一筆，系統會盡力解析：<br>日期 角色 Boss(可簡稱) 物品 隊友</p>
             <textarea id="notepad-input" class="form-control mb-3 shadow-sm" rows="12" placeholder="例：3/7 弓之意志 困狗 研磨石(IV)"></textarea>
@@ -171,6 +171,36 @@
         <span class="text-danger small fw-bold me-auto d-none" id="audit-warning">⚠️ 還有紅色警告欄位未修正，請確認！</span>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
         <button type="button" class="btn btn-success fw-bold px-4" id="btn-commit-notepad" disabled>💾 確認並寫入資料庫</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="aliasSettingsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title fw-bold">📖 編輯簡稱字典</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="alert alert-info py-2 small mb-3 border-0 shadow-sm">
+            💡 在此設定您的個人習慣用語。當您在記事本輸入「簡稱」時，系統會自動將其視為右側對應的「官方名稱」。
+        </div>
+        
+        <h6 class="fw-bold mb-2">➕ 新增對應規則</h6>
+        <div class="input-group mb-4 shadow-sm">
+          <input type="text" id="input-alias-key" class="form-control border-primary" placeholder="輸入簡稱 (例:困狗)" style="max-width: 140px;">
+          <span class="input-group-text bg-white border-primary border-start-0 border-end-0 text-muted">=</span>
+          <select id="select-alias-value" class="form-select border-primary">
+            <option value="">請選擇對應的官方目標...</option>
+            </select>
+          <button class="btn btn-primary fw-bold" id="btn-add-alias">儲存</button>
+        </div>
+
+        <h6 class="fw-bold mb-2">📋 目前的字典清單</h6>
+        <ul class="list-group shadow-sm" id="alias-list-container">
+          </ul>
       </div>
     </div>
   </div>
