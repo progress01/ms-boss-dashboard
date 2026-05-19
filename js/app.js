@@ -940,7 +940,14 @@ document.getElementById("btn-start-journey").addEventListener("click", async () 
     const input = document.getElementById("input-first-char"); const charName = input.value.trim();
     if (!charName) { showToast("請輸入角色名稱", "warning"); return; }
     userSettings.characters = [charName]; userSettings.lastActiveChar = charName; activeChar = charName;
-    await saveUserSettings(); initDashboard();
+    await saveUserSettings(); 
+    initDashboard();
+    
+    // 新增：初次創角成功進入系統後，延遲 0.5 秒自動彈出教學視窗
+    setTimeout(() => {
+        const tutorialModal = new bootstrap.Modal(document.getElementById('tutorialModal'));
+        tutorialModal.show();
+    }, 500); 
 });
 document.getElementById("input-first-char").addEventListener("keypress", (e) => { if (e.key === "Enter") document.getElementById("btn-start-journey").click(); });
 
