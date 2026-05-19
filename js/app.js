@@ -7,10 +7,10 @@ import { signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstati
 // === 全域狀態 ===
 let currentUserUid = null; 
 let bossSelectMaster; 
-let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
+let userSettings = { characters: [], lastActiveChar: "", customItems: [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {}, bossAliases: {} };
 let activeChar = ""; 
 let currentRecordsData = [];
-let isManageMode = { routine: false, loot: false };
+let isManageMode = { routine: false, loot: false, listEdit: false };
 
 // === 工具函式 ===
 function getTWNow() {
@@ -168,6 +168,17 @@ async function loadUserSettings() {
         if(!userSettings.weeklyTasks) userSettings.weeklyTasks = {};
         if(!userSettings.bossTemplates) userSettings.bossTemplates = {}; 
         
+        // 預設常見簡稱字典初始化
+        if(!userSettings.bossAliases) {
+            userSettings.bossAliases = {
+                "困狗": "混沌監視者卡洛斯", "極狗": "終極監視者卡洛斯",
+                "困賽": "困難受選的賽蓮", "極賽": "終極受選的賽蓮",
+                "困黑": "困難黑魔法師", "極黑": "終極黑魔法師",
+                "困咖": "困難咖凌", "極咖": "終極咖凌", "普狗": "普通監視者卡洛斯",
+                "簡狗": "簡單監視者卡洛斯", "困眼": "混沌戴斯克", "困綠": "混沌守護天使綠水靈"
+            };
+        }
+        
         if (userSettings.lastActiveChar && userSettings.characters.includes(userSettings.lastActiveChar)) {
             activeChar = userSettings.lastActiveChar;
         } else {
@@ -175,7 +186,7 @@ async function loadUserSettings() {
         }
         initDashboard();
     } else {
-        userSettings = { characters: [], lastActiveChar: "", customItems: data?.customItems || [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {} };
+        userSettings = { characters: [], lastActiveChar: "", customItems: data?.customItems || [], routineBosses: {}, weeklyTasks: {}, bossTemplates: {}, bossAliases: {} };
         showScreen('onboarding');
     }
 }
@@ -211,7 +222,6 @@ async function loadRecords() {
 
         currentRecordsData = await fetchRecordsByDateRange(currentUserUid, getLocalDateString(fetchStart), getLocalDateString(fetchEnd));
         
-        // 鎖死並同步舊的表格篩選器
         const localFilter = document.getElementById("filter-week-routine");
         if(localFilter) {
             localFilter.disabled = true;
@@ -220,9 +230,9 @@ async function loadRecords() {
 
         updateAccountOverview(); 
         renderHeatmap(currentRecordsData);
-        updateCharacterStats(); // 💡 移除了 boundaries 參數，改用全域時間
-        renderRoutineTable();   // 💡 移除了 boundaries 參數，改用全域時間
-        renderLootTable();      // 💡 寶物表也加入全域時間過濾
+        updateCharacterStats(); 
+        renderRoutineTable();   
+        renderLootTable();      
         loadRoutineBosses(false);
         renderLuckBoard(); 
         
@@ -356,7 +366,6 @@ function updateAccountOverview() {
     document.getElementById("weekly-limit-badge").className = charWeeklyCount >= 12 ? "badge bg-danger text-white fs-6 px-3 py-2 shadow-sm rounded-pill" : "badge bg-primary text-white fs-6 px-3 py-2 shadow-sm rounded-pill";
 }
 
-// 💡 重大修正：角色數據現在 100% 同步右上角的全域時間
 function updateCharacterStats() {
     const range = getDashboardDateRange();
     if (!range) return;
@@ -425,7 +434,6 @@ function renderHeatmap(records) {
     }
 }
 
-// 💡 重大修正：表格列表現在 100% 同步右上角的全域時間
 function renderRoutineTable() {
     const theadRow = document.getElementById("thead-routine-row");
     const tableBody = document.getElementById("table-body-routine");
@@ -502,22 +510,52 @@ function renderLootTable() {
     theadRow.innerHTML = `
         ${isManageMode.loot ? '<th style="width: 40px;"><input type="checkbox" id="cb-all-loot" class="form-check-input" style="cursor: pointer;"></th>' : ''}
         <th>物品與目標</th>
-        <th>市價 / 實收</th>
-        <th>狀態</th>
-        ${isManageMode.loot ? '' : '<th>操作</th>'}
+        ${isManageMode.listEdit ? '<th>售價與幣值</th><th>狀態修改</th>' : '<th>市價 / 實收</th><th>狀態</th>'}
+        ${(isManageMode.loot || isManageMode.listEdit) ? '' : '<th>操作</th>'}
     `;
 
     let html = "";
     lootRecords.forEach(data => {
+        let isTwd = data.currency === 'twd';
+        
+        // --- 快速記帳模式 (Excel Style) ---
+        if (isManageMode.listEdit) {
+            let priceVal = isTwd ? (data.item_total_price_twd || 0) : (data.item_total_price_billion || 0);
+            html += `
+                <tr class="bg-light" data-doc-id="${data.id}" data-players="${data.total_players || 1}">
+                    <td class="text-start ps-md-3" style="width: 35%;">
+                        <div class="fw-bold text-secondary mb-1">📦 ${data.item_name}</div>
+                        <small class="text-muted">${data.date} | ${data.boss_name}</small>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm border-success rounded">
+                            <input type="number" class="form-control list-edit-price" value="${priceVal}" step="0.1">
+                            <select class="form-select text-center fw-bold list-edit-currency" style="max-width: 65px;">
+                                <option value="meso" ${!isTwd ? 'selected' : ''}>億</option>
+                                <option value="twd" ${isTwd ? 'selected' : ''} class="text-warning">元</option>
+                            </select>
+                        </div>
+                    </td>
+                    <td style="width: 25%;">
+                        <select class="form-select form-select-sm border-success list-edit-status">
+                            <option value="待售出" ${data.status === '待售出' ? 'selected' : ''}>⏳ 待售出</option>
+                            <option value="已售出" ${data.status === '已售出' ? 'selected' : ''}>✔️ 已售出</option>
+                            <option value="自用" ${data.status === '自用' ? 'selected' : ''}>💎 自用</option>
+                        </select>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // --- 一般閱讀模式 ---
         let sBadge = data.status === "自用" ? `<span class="status-badge bg-self">💎 自用</span>` : (data.status === "待售出" ? `<span class="status-badge bg-pending">⏳ 待售出</span>` : `<span class="status-badge bg-sold">✔️ 已售出</span>`);
         let pBadge = (data.status !== "自用" && data.payout_status !== "無需分帳") ? (data.payout_status === "未結清" ? `<span class="status-badge bg-unsettled mt-1">⚠️ 未結清</span>` : `<span class="status-badge bg-settled mt-1">✔️ 已結清</span>`) : "";
-
         let dividendLabel = data.total_players === 1 ? "實收" : "分紅";
         let isRoutine = (userSettings.routineBosses[activeChar] || []).includes(data.boss_name);
         let badgeHtml = isRoutine ? `<span class="badge bg-dark text-warning" style="font-size: 0.6em; margin-right: 4px;">⭐</span>` : `<span class="badge bg-light text-secondary border border-secondary" style="font-size: 0.6em; margin-right: 4px;">🆕</span>`;
         let settleBtn = (data.payout_status === "未結清" && data.status !== "自用") ? `<button class="btn btn-sm btn-success btn-quick-settle mb-1 action-lock" data-id="${data.id}">✅ 結清</button>` : '';
 
-        let isTwd = data.currency === 'twd';
         let priceStr = isTwd ? `${(data.item_total_price_twd || 0).toLocaleString()} 元` : `${(data.item_total_price_billion || 0).toFixed(2)} 億`;
         let divStr = data.status === '自用' ? (isTwd ? "0 元" : "0 億") : (isTwd ? `${(data.my_dividend_twd || 0).toLocaleString()} 元` : `${(data.my_dividend_billion || 0).toFixed(2)} 億`);
 
@@ -545,7 +583,7 @@ function renderLootTable() {
             </tr>
         `;
     });
-    tableBody.innerHTML = html || `<tr><td colspan="${isManageMode.loot ? 4 : 4}" class="text-muted py-4">目前寶物庫空空如也</td></tr>`;
+    tableBody.innerHTML = html || `<tr><td colspan="${isManageMode.listEdit ? 3 : (isManageMode.loot ? 4 : 4)}" class="text-muted py-4">目前寶物庫空空如也</td></tr>`;
 
     if (isManageMode.loot) {
         const cbAll = document.getElementById("cb-all-loot");
@@ -553,7 +591,6 @@ function renderLootTable() {
     }
 }
 
-// === 歐氣排行榜渲染 ===
 function renderLuckBoard() {
     const container = document.getElementById("luck-board-container");
     if(!container) return; 
@@ -720,10 +757,6 @@ function renderLuckBoard() {
     });
     container.innerHTML = html;
 }
-
-document.getElementById('luckModal').addEventListener('show.bs.modal', renderLuckBoard);
-document.getElementById('luck-merge-chars').addEventListener('change', renderLuckBoard);
-document.getElementById('luck-exchange-rate').addEventListener('input', renderLuckBoard);
 
 // === 設定功能與 TomSelect 表單 ===
 function renderItemDatalist() {
@@ -1089,17 +1122,84 @@ document.addEventListener("click", async (e) => {
                 }
                 new bootstrap.Tab(document.querySelector('#pills-routine-tab')).show();
             }
-            document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊伍)"; 
+            document.getElementById("form-title-master").innerHTML = "✏️ 編輯模式 (更新此筆紀錄與相關聯隊庫)"; 
             saveBtnMaster.innerText = "💾 更新紀錄"; saveBtnMaster.classList.replace("btn-primary", "btn-warning"); cancelEditMasterBtn.classList.remove("d-none");
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 });
 
+// 管理按鈕狀態切換
 document.getElementById("btn-toggle-manage-routine").addEventListener("click", () => { isManageMode.routine = true; document.getElementById("btn-toggle-manage-routine").classList.add("d-none"); document.getElementById("manage-bar-routine").classList.remove("d-none"); renderRoutineTable(); });
 document.getElementById("btn-cancel-manage-routine").addEventListener("click", () => { isManageMode.routine = false; document.getElementById("btn-toggle-manage-routine").classList.remove("d-none"); document.getElementById("manage-bar-routine").classList.add("d-none"); renderRoutineTable(); });
 document.getElementById("btn-toggle-manage-loot").addEventListener("click", () => { isManageMode.loot = true; document.getElementById("btn-toggle-manage-loot").classList.add("d-none"); document.getElementById("btn-copy-line").disabled = true; document.getElementById("manage-bar-loot").classList.remove("d-none"); renderLootTable(); });
 document.getElementById("btn-cancel-manage-loot").addEventListener("click", () => { isManageMode.loot = false; document.getElementById("btn-toggle-manage-loot").classList.remove("d-none"); document.getElementById("btn-copy-line").disabled = false; document.getElementById("manage-bar-loot").classList.add("d-none"); renderLootTable(); });
+
+// 新增功能：清單快速記帳按鈕綁定
+document.getElementById("btn-toggle-list-edit")?.addEventListener("click", () => {
+    isManageMode.listEdit = true;
+    document.getElementById("btn-toggle-list-edit").classList.add("d-none");
+    document.getElementById("manage-bar-list-edit").classList.remove("d-none");
+    document.querySelectorAll(".action-lock").forEach(btn => btn.disabled = true);
+    renderLootTable();
+});
+
+document.getElementById("btn-cancel-list-edit")?.addEventListener("click", () => {
+    isManageMode.listEdit = false;
+    document.getElementById("btn-toggle-list-edit").classList.remove("d-none");
+    document.getElementById("manage-bar-list-edit").classList.add("d-none");
+    document.querySelectorAll(".action-lock").forEach(btn => btn.disabled = false);
+    renderLootTable();
+});
+
+document.getElementById("btn-save-list-edit")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-save-list-edit");
+    btn.disabled = true; btn.innerText = "儲存中...";
+
+    try {
+        const batch = writeBatch(db);
+        const rows = document.querySelectorAll("#table-body-loot tr[data-doc-id]");
+        
+        rows.forEach(row => {
+            const docId = row.getAttribute("data-doc-id");
+            const partySize = parseInt(row.getAttribute("data-players")) || 1;
+            
+            const rawPrice = parseFloat(row.querySelector(".list-edit-price").value) || 0;
+            const currency = row.querySelector(".list-edit-currency").value;
+            const status = row.querySelector(".list-edit-status").value;
+
+            let priceMeso = currency === 'meso' ? rawPrice : 0;
+            let priceTwd = currency === 'twd' ? rawPrice : 0;
+            let payoutStatus = status === "自用" ? "無需分帳" : (status === "已售出" ? "已結清" : "未結清");
+            
+            if (status === "自用") { priceMeso = 0; priceTwd = 0; }
+            
+            let divMeso = priceMeso > 0 ? parseFloat((priceMeso / partySize).toFixed(2)) : 0;
+            let divTwd = priceTwd > 0 ? Math.floor(priceTwd / partySize) : 0;
+
+            batch.update(doc(db, "DropRecords", docId), {
+                item_total_price_billion: priceMeso,
+                item_total_price_twd: priceTwd,
+                currency: currency,
+                status: status,
+                payout_status: payoutStatus,
+                my_dividend_billion: divMeso,
+                my_dividend_twd: divTwd
+            });
+        });
+
+        await batch.commit();
+        showToast("✅ 帳務變更已全數更新！", "success");
+        document.getElementById("btn-cancel-list-edit").click(); 
+        loadRecords(); 
+
+    } catch (error) {
+        console.error(error);
+        showToast("批次儲存失敗", "danger");
+    } finally {
+        btn.disabled = false; btn.innerText = "💾 儲存變更";
+    }
+});
 
 document.getElementById("btn-batch-delete-routine").addEventListener("click", () => {
     const checkedBoxes = document.querySelectorAll(".cb-routine-item:checked"); if(checkedBoxes.length === 0) { showToast("請先勾選要刪除的項目！", "warning"); return; }
@@ -1128,4 +1228,208 @@ document.getElementById("btn-copy-line").addEventListener("click", () => {
         if (d.teammates && d.teammates.length > 0) report += ` 👉 分錢名單: ${d.teammates.join(", ")}\n`; report += `\n`;
     });
     navigator.clipboard.writeText(report).then(() => showToast("✅ 對帳單已成功複製到剪貼簿！", "success"));
+});
+
+// ==========================================
+// === 新增功能：智慧預測記事本與匯入 ===
+// ==========================================
+let notepadParsedData = [];
+
+window.openAliasSettings = function() {
+    const aliasKey = prompt("➕ 新增/修改簡稱字典：\n請輸入【簡稱】 (例如：困威)");
+    if (!aliasKey || !aliasKey.trim()) return;
+    const aliasValue = prompt(`請輸入【${aliasKey}】對應的【完整 Boss 名稱】\n(必須與系統選單完全一致，例如：困難威爾)`);
+    if (!aliasValue || !aliasValue.trim()) return;
+    
+    userSettings.bossAliases[aliasKey.trim()] = aliasValue.trim();
+    saveUserSettings().then(() => showToast(`✅ 簡稱 [${aliasKey}] -> [${aliasValue}] 已儲存！`, "success"));
+};
+
+document.getElementById("btn-analyze-notepad")?.addEventListener("click", () => {
+    const text = document.getElementById("notepad-input").value.trim();
+    if (!text) return showToast("筆記本是空的哦！", "warning");
+
+    const lines = text.split('\n');
+    notepadParsedData = [];
+    const currentYear = new Date().getFullYear();
+    
+    const allBossOptions = Array.from(document.getElementById("hidden-boss-options").querySelectorAll("option")).map(opt => opt.value);
+
+    lines.forEach((line, index) => {
+        if (!line.trim()) return;
+
+        const parts = line.split(/[\s,]+/).filter(Boolean);
+        let parsed = { id: `note_${Date.now()}_${index}`, raw: line, date: "", char: "", boss: "", item: "" };
+
+        // 1. 抓日期
+        const dateIndex = parts.findIndex(p => p.includes('/') || p.includes('-'));
+        if (dateIndex !== -1) {
+            let rawDate = parts.splice(dateIndex, 1)[0];
+            let dParts = rawDate.split(/[-/]/);
+            if (dParts.length === 2) parsed.date = `${currentYear}-${dParts[0].padStart(2, '0')}-${dParts[1].padStart(2, '0')}`;
+            else if (dParts.length === 3) parsed.date = `${dParts[0]}-${dParts[1].padStart(2, '0')}-${dParts[2].padStart(2, '0')}`;
+        } else {
+            parsed.date = document.getElementById("input-date-master").value || getLocalDateString(getTWNow()); 
+        }
+
+        // 2. 抓角色
+        const charIndex = parts.findIndex(p => userSettings.characters.includes(p));
+        if (charIndex !== -1) {
+            parsed.char = parts.splice(charIndex, 1)[0];
+        } else {
+            parsed.char = activeChar; 
+        }
+
+        // 3. 抓 Boss
+        let bossFound = false;
+        for (let i = 0; i < parts.length; i++) {
+            let p = parts[i];
+            if (userSettings.bossAliases && userSettings.bossAliases[p]) {
+                parsed.boss = userSettings.bossAliases[p];
+                parts.splice(i, 1);
+                bossFound = true; break;
+            }
+            const match = allBossOptions.find(b => b.includes(p));
+            if (match) {
+                parsed.boss = match;
+                parts.splice(i, 1);
+                bossFound = true; break;
+            }
+        }
+
+        // 4. 剩下的文字塞給物品
+        parsed.item = parts.join(" ");
+
+        notepadParsedData.push(parsed);
+    });
+
+    renderNotepadAudit();
+});
+
+function renderNotepadAudit() {
+    const tbody = document.getElementById("notepad-audit-body");
+    const commitBtn = document.getElementById("btn-commit-notepad");
+    const warningText = document.getElementById("audit-warning");
+    
+    if(!tbody) return;
+
+    let html = "";
+    let hasError = false;
+
+    const bossOptionsHtml = document.getElementById("hidden-boss-options").innerHTML;
+
+    notepadParsedData.forEach(data => {
+        const isBossValid = data.boss !== ""; 
+        const isCharValid = userSettings.characters.includes(data.char);
+        
+        if (!isBossValid || !isCharValid) hasError = true;
+
+        html += `
+            <tr id="tr_${data.id}">
+                <td><input type="date" class="form-control form-control-sm" value="${data.date}" onchange="updateNoteData('${data.id}', 'date', this.value)"></td>
+                <td>
+                    <input type="text" class="form-control form-control-sm ${isCharValid ? '' : 'border-danger bg-danger-subtle'}" value="${data.char}" placeholder="角色名" onchange="updateNoteData('${data.id}', 'char', this.value)">
+                </td>
+                <td>
+                    <select class="form-select form-select-sm ${isBossValid ? '' : 'border-danger bg-danger-subtle'}" onchange="updateNoteData('${data.id}', 'boss', this.value)">
+                        <option value="">-- 手動補齊 Boss --</option>
+                        ${bossOptionsHtml}
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${data.item}" placeholder="物品/備註" onchange="updateNoteData('${data.id}', 'item', this.value)">
+                </td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="removeNoteRow('${data.id}')">刪除</button></td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+
+    notepadParsedData.forEach(data => {
+        if (data.boss) {
+            const select = document.querySelector(`#tr_${data.id} select`);
+            if (select) select.value = data.boss;
+        }
+    });
+
+    commitBtn.disabled = hasError || notepadParsedData.length === 0;
+    if (hasError) warningText.classList.remove("d-none");
+    else warningText.classList.add("d-none");
+}
+
+window.updateNoteData = function(id, field, value) {
+    const record = notepadParsedData.find(d => d.id === id);
+    if(record) record[field] = value;
+    renderNotepadAudit(); 
+};
+
+window.removeNoteRow = function(id) {
+    notepadParsedData = notepadParsedData.filter(d => d.id !== id);
+    renderNotepadAudit();
+};
+
+document.getElementById("btn-commit-notepad")?.addEventListener("click", async () => {
+    const hasError = notepadParsedData.some(d => !d.boss || !userSettings.characters.includes(d.char));
+    if (hasError) {
+        showToast("還有紅色錯誤欄位尚未修正！", "warning");
+        return;
+    }
+
+    const commitBtn = document.getElementById("btn-commit-notepad");
+    commitBtn.innerHTML = "寫入資料中... ⏳";
+    commitBtn.disabled = true;
+
+    try {
+        const batch = writeBatch(db);
+        const batchId = "import_" + Date.now().toString(); 
+
+        notepadParsedData.forEach(row => {
+            let rawItemsString = row.item.trim() || "無";
+            let itemNames = rawItemsString.split(/、|,|，/).map(s => s.trim()).filter(Boolean);
+
+            itemNames.forEach(itemName => {
+                const docRef = doc(collection(db, "DropRecords"));
+                let isNoDrop = (itemName === "無");
+                
+                batch.set(docRef, {
+                    uid: currentUserUid,
+                    character_name: row.char,
+                    date: row.date,
+                    boss_name: row.boss,
+                    item_name: itemName,
+                    status: isNoDrop ? "僅紀錄" : "待售出",
+                    payout_status: isNoDrop ? "無需分帳" : "未結清",
+                    currency: "meso",
+                    item_total_price_billion: 0,
+                    my_dividend_billion: 0,
+                    item_total_price_twd: 0,
+                    my_dividend_twd: 0,
+                    teammates: [], 
+                    total_players: 1,
+                    batch_id: batchId,
+                    crystal_income_billion: 0 
+                });
+            });
+        });
+
+        await batch.commit();
+        showToast(`✅ 成功匯入並建立資料！`, "success");
+        
+        notepadParsedData = [];
+        document.getElementById("notepad-input").value = "";
+        renderNotepadAudit();
+        
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('smartNotepadModal'));
+        if (modalInstance) modalInstance.hide();
+        
+        loadRecords();
+
+    } catch (error) {
+        console.error("批次匯入失敗:", error);
+        showToast("資料匯入發生異常，請重試", "danger");
+    } finally {
+        commitBtn.innerHTML = "💾 確認並寫入資料庫";
+        commitBtn.disabled = false;
+    }
 });
